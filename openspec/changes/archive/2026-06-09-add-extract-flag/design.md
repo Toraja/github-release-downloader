@@ -1,6 +1,6 @@
 ## Context
 
-`github-latest-release-downloader` is a single-file Rust CLI tool that fetches the latest release from a GitHub repo and downloads a matched asset to disk. Currently there is no post-download processing — the asset is always saved as-is.
+`github-release-downloader` is a single-file Rust CLI tool that fetches the latest release from a GitHub repo and downloads a matched asset to disk. Currently there is no post-download processing — the asset is always saved as-is.
 
 Many GitHub release assets are `.tar.gz` archives containing a single binary. Users routinely follow a download with a manual `tar xzf` invocation to get the binary. Adding an `--extract` flag closes that gap and makes the tool self-contained for the common install-a-binary workflow.
 

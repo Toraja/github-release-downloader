@@ -1,4 +1,4 @@
-# github-latest-release-downloader
+# github-release-downloader
 
 A CLI tool that downloads assets from the latest release of any GitHub repository.
 Given a repository URL and a regex pattern, it fetches the release metadata, matches assets by name, and either saves the file to disk or streams and extracts a `.tar.gz` archive in-place.
@@ -19,10 +19,10 @@ cargo install --path .
 ## Usage
 
 ```
-github-latest-release-downloader <URL> <PATTERN> [OPTIONS]
+github-release-downloader <URL> <PATTERN> [OPTIONS]
 ```
 
-See `github-latest-release-downloader --help` for more details.
+See `github-release-downloader --help` for more details.
 
 ## Releasing
 
@@ -30,11 +30,11 @@ Releases are automated via [cargo-dist](https://axodotdev.github.io/cargo-dist).
 
 ```sh
 # Ensure the version in Cargo.toml is updated first, then:
-git tag github-latest-release-downloader-v<VERSION>
-git push origin github-latest-release-downloader-v<VERSION>
+git tag github-release-downloader-v<VERSION>
+git push origin github-release-downloader-v<VERSION>
 ```
 
 The release appears at https://github.com/Toraja/cde/releases with the following artifacts per target:
 
-- `github-latest-release-downloader-<TARGET>.tar.xz` — binary archive
-- `github-latest-release-downloader-<TARGET>.tar.xz.sha256` — checksum
+- `github-release-downloader-<TARGET>.tar.xz` — binary archive
+- `github-release-downloader-<TARGET>.tar.xz.sha256` — checksum

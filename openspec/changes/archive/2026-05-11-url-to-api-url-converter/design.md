@@ -1,6 +1,6 @@
 ## Context
 
-This is a new Rust CLI tool (`github-latest-release-downloader`) with no existing implementation. The first iteration focuses solely on URL conversion: given a GitHub repository URL, produce the corresponding GitHub API latest release URL. No network calls are made.
+This is a new Rust CLI tool (`github-release-downloader`) with no existing implementation. The first iteration focuses solely on URL conversion: given a GitHub repository URL, produce the corresponding GitHub API latest release URL. No network calls are made.
 
 ## Goals / Non-Goals
 

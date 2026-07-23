@@ -96,7 +96,7 @@ fn to_api_url(url: &Url) -> Result<Url, String> {
 
 fn fetch_release(api_url: &Url) -> Result<Release, String> {
     let mut req = ureq::get(api_url.as_str())
-        .header("User-Agent", "github-latest-release-downloader")
+        .header("User-Agent", "github-release-downloader")
         .header("Accept", "application/vnd.github+json");
 
     if let Ok(token) = std::env::var("GITHUB_TOKEN") {
@@ -165,7 +165,7 @@ fn resolve_output_path(
 
 fn download_asset(asset: &Asset, dest: &Path) -> Result<(), String> {
     let mut response = ureq::get(&asset.browser_download_url)
-        .header("User-Agent", "github-latest-release-downloader")
+        .header("User-Agent", "github-release-downloader")
         .call()
         .map_err(|e| format!("Download request failed: {}", e))?;
 
@@ -188,7 +188,7 @@ fn download_asset(asset: &Asset, dest: &Path) -> Result<(), String> {
 
 fn extract_asset(asset: &Asset, dest_dir: &Path) -> Result<(), String> {
     let mut response = ureq::get(&asset.browser_download_url)
-        .header("User-Agent", "github-latest-release-downloader")
+        .header("User-Agent", "github-release-downloader")
         .call()
         .map_err(|e| format!("Download request failed: {}", e))?;
 
@@ -316,7 +316,7 @@ fn extract_entry_from_reader<R: Read>(reader: R, entry: &str, dest: &Path) -> Re
 
 fn extract_entry(asset: &Asset, entry: &str, dest: &Path) -> Result<(), String> {
     let mut response = ureq::get(&asset.browser_download_url)
-        .header("User-Agent", "github-latest-release-downloader")
+        .header("User-Agent", "github-release-downloader")
         .call()
         .map_err(|e| format!("Download request failed: {}", e))?;
 
