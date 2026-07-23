@@ -1,4 +1,4 @@
-name: Tools test
+name: Test
 
 on:
   push: &on-condition
