@@ -1,0 +1,58 @@
+# 🚧 Bench regression — TODO: wire up once benches/ exist
+
+name: Rust test
+description: Test rust code
+inputs:
+  working-directory:
+    description: Working directory
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install Rust toolchain (stable + rustfmt + clippy)
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: rustfmt, clippy
+
+    - name: Setup cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+
+    - name: Check formatting
+      shell: bash
+      working-directory: ${{inputs.working-directory}}
+      env:
+        CARGO_TERM_COLOR: always
+        SCCACHE_GHA_ENABLED: "true"
+        RUSTC_WRAPPER: "sccache"
+      run: cargo fmt --all --check
+
+    - name: Lint
+      shell: bash
+      working-directory: ${{inputs.working-directory}}
+      env:
+        CARGO_TERM_COLOR: always
+        SCCACHE_GHA_ENABLED: "true"
+        RUSTC_WRAPPER: "sccache"
+      run: cargo clippy --all-targets --all-features -- --deny warnings
+
+    - name: Run tests and enforce 80% line coverage
+      shell: bash
+      working-directory: ${{inputs.working-directory}}
+      env:
+        CARGO_TERM_COLOR: always
+        SCCACHE_GHA_ENABLED: "true"
+        RUSTC_WRAPPER: "sccache"
+      run: cargo llvm-cov --all-features --fail-under-lines 80
+
+    - name: Documentation
+      shell: bash
+      working-directory: ${{inputs.working-directory}}
+      env:
+        CARGO_TERM_COLOR: always
+        SCCACHE_GHA_ENABLED: "true"
+        RUSTC_WRAPPER: "sccache"
+        RUSTDOCFLAGS: "--deny warnings"
+      run: cargo doc --no-deps --all-features

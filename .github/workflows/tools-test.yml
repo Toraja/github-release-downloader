@@ -1,0 +1,28 @@
+name: Tools test
+
+on:
+  push: &on-condition
+    branches:
+      - "main"
+    paths:
+      - "tools/**"
+      - ".github/workflows/tools-test.yml"
+      - ".github/actions/**"
+  pull_request: *on-condition
+
+env:
+  CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: true
+  RUSTC_WRAPPER: sccache
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Test github-latest-release-downloader
+        uses: ./.github/actions/rust-test
+        with:
+          working-directory: tools/github-latest-release-downloader

@@ -1,0 +1,26 @@
+[package]
+name = "github-release-downloader"
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/Toraja/cde"
+description = "Download assets from the latest GitHub release of a repository"
+license = "MIT"
+authors = ["Toraja <Toraja@users.noreply.github.com>"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+url = "2"
+ureq = { version = "3", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+flate2 = "1"
+tar = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
