@@ -30,8 +30,8 @@ Releases are automated via [cargo-dist](https://axodotdev.github.io/cargo-dist).
 
 ```sh
 # Ensure the version in Cargo.toml is updated first, then:
-git tag github-release-downloader-v<VERSION>
-git push origin github-release-downloader-v<VERSION>
+git tag v<VERSION>
+git push origin v<VERSION>
 ```
 
 The release appears at https://github.com/Toraja/cde/releases with the following artifacts per target:
