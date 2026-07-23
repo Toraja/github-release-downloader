@@ -5,7 +5,9 @@ description: Test rust code
 inputs:
   working-directory:
     description: Working directory
-    required: true
+    required: false
+    default: '.'
+    type: string
 runs:
   using: composite
   steps:

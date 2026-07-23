@@ -24,5 +24,3 @@ jobs:
 
       - name: Test github-latest-release-downloader
         uses: ./.github/actions/rust-test
-        with:
-          working-directory: tools/github-latest-release-downloader
