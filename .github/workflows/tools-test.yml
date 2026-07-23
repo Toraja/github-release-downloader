@@ -5,9 +5,9 @@ on:
     branches:
       - "main"
     paths:
-      - "tools/**"
+      - "src/**"
       - ".github/workflows/tools-test.yml"
-      - ".github/actions/**"
+      - ".github/actions/rust-test/**"
   pull_request: *on-condition
 
 env:
