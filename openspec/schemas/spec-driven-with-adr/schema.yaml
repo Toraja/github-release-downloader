@@ -1,6 +1,6 @@
 name: spec-driven-with-adr
 version: 1
-description: Default OpenSpec workflow - proposal → specs → design → adr → tasks (ADRs persist at <repo>/adr/)
+description: Default OpenSpec workflow - proposal → specs → design → adr → tasks (ADRs persist at <repo>/doc/adr/)
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -20,8 +20,8 @@ artifacts:
       **BREAKING**.
 
       - **Capabilities**: Identify which specs will be created or modified:
-        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).
-        - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `openspec/specs/` for existing spec names. Leave empty if no requirement changes.
+        - **New Capabilities**: List capabilities being introduced. Each becomes a new `specs/<capability-path>/spec.md`. Use kebab-case for path segments you introduce (e.g., `user-auth` or `identity/user-auth`) and follow the project's existing spec organization.
+        - **Modified Capabilities**: List existing capabilities whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Use the exact existing path under `openspec/specs/`. Leave empty if no requirement changes.
       - **Impact**: Affected code, APIs, dependencies, or systems.
 
 
@@ -33,16 +33,27 @@ artifacts:
       Each capability listed here will need a corresponding spec file.
 
 
+      Every change must either declare at least one capability (new or
+
+      modified) or explicitly opt out of specs: `openspec validate` rejects a
+
+      change with zero deltas unless the change's `.openspec.yaml` sets
+
+      `skip_specs: true`. Use `skip_specs: true` only when no spec-level
+
+      behavior changes (pure refactor, tooling, docs) - specs describe
+
+      behavior, so if behavior does not change, no spec should change either.
+
+      Do not invent a requirement just to satisfy validation.
+
+
       Keep it concise (1-2 pages). Focus on the "why" not the "how" -
 
       implementation details belong in design.md.
 
 
-      Durable architectural decisions worth carrying across changes are
-      distilled into ADR files at <repo>/adr/ by a later step (after design).
-
-
-      This is the foundation - specs, design, adr, and tasks all build on this.
+      This is the foundation - specs, design, and tasks all build on this.
     requires: []
   - id: specs
     generates: specs/**/*.md
@@ -52,15 +63,63 @@ artifacts:
       Create specification files that define WHAT the system should do.
 
 
+      A spec is a behavior contract, not an implementation plan.
+
+
+      Good spec content:
+
+      - Observable behavior users or downstream systems rely on
+
+      - Inputs, outputs, and error conditions
+
+      - External constraints (security, privacy, reliability, compatibility)
+
+      - Scenarios that can be tested or explicitly validated
+
+
+      Avoid in specs:
+
+      - Internal class/function names
+
+      - Library or framework choices
+
+      - Step-by-step implementation details
+
+      - Detailed execution plans (those belong in design.md or tasks.md)
+
+
+      Quick test: if the implementation can change without changing externally
+
+      visible behavior, it likely does not belong in the spec.
+
+
       Create one spec file per capability listed in the proposal's Capabilities
       section.
 
-      - New capabilities: use the exact kebab-case name from the proposal
-      (specs/<capability>/spec.md).
+      `<capability-path>` is the spec directory relative to `specs/` (for
+      example,
 
-      - Modified capabilities: use the existing spec folder name from
-      openspec/specs/<capability>/ when creating the delta spec at
-      specs/<capability>/spec.md.
+      `user-auth` or `identity/user-auth`). Preserve the full path:
+
+      - New capabilities: use the exact path from the proposal at
+      `specs/<capability-path>/spec.md`. Any path segment newly introduced in
+      the proposal must be kebab-case. Follow the project's existing
+      organization; do not add a new domain level when the project uses a flat
+      layout.
+
+      - Modified capabilities: use the exact existing path from
+      `openspec/specs/<capability-path>/` when creating the delta at
+      `specs/<capability-path>/spec.md`. Do not move or rename the capability.
+
+
+      There must be at least one spec file unless the change's `.openspec.yaml`
+
+      sets `skip_specs: true` (no spec-level behavior change) - `openspec
+      validate`
+
+      rejects a zero-delta change without that marker. If the proposal lists no
+
+      capabilities and `skip_specs` is not set, revisit the proposal first.
 
 
       Delta operations (use ## headers):
@@ -90,9 +149,29 @@ artifacts:
       - Every requirement MUST have at least one scenario.
 
 
+      New capabilities only: start the delta spec with a `## Purpose` section -
+
+      one or two sentences (50+ characters, or `openspec validate --strict`
+
+      reports it as too brief) describing what the capability is for. Archive
+
+      copies it into the main spec it creates; without it the new main spec is
+
+      left with a `TBD ... Update Purpose after archive` placeholder to fill in
+
+      by hand. Do NOT add `## Purpose` to a delta for an existing capability -
+
+      that spec already has one and the delta's is ignored. To change an
+
+      existing capability's Purpose - including a leftover `TBD` placeholder -
+
+      edit `openspec/specs/<capability-path>/spec.md` directly.
+
+
       MODIFIED requirements workflow:
 
-      1. Locate the existing requirement in openspec/specs/<capability>/spec.md
+      1. Locate the existing requirement in
+      openspec/specs/<capability-path>/spec.md
 
       2. Copy the ENTIRE requirement block (from `### Requirement:` through all
       scenarios)
@@ -109,9 +188,15 @@ artifacts:
       instead.
 
 
-      Example:
+      Example (a new capability, so it opens with `## Purpose`):
 
       ```
+
+      ## Purpose
+
+
+      Lets users take their data out of the product in a portable format.
+
 
       ## ADDED Requirements
 
@@ -178,9 +263,13 @@ artifacts:
 
       Sections:
 
-      - **Context**: Background, current state, constraints, stakeholders
+      - **Context**: Only the current state and constraints needed to explain
+      the approach. Reference the proposal for motivation instead of restating
+      it (e.g., "See proposal.md - Why").
 
-      - **Goals / Non-Goals**: What this design achieves and explicitly excludes
+      - **Goals / Non-Goals**: What this design achieves and explicitly
+      excludes. Don't restate the proposal's scope - add only design-level
+      boundaries.
 
       - **Decisions**: Key technical choices with rationale (why X over Y?).
       Include alternatives considered for each decision.
@@ -190,14 +279,23 @@ artifacts:
 
       - **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
 
-      - **Open Questions**: Outstanding decisions or unknowns to resolve.
-      Include any in-force ADRs that this design suggests revisiting — the
-      adr step will record the supersession.
+      - **Open Questions**: Unknowns that can safely be answered later without
+        changing the specs, the approach, or the task breakdown. Omit if none.
+
+      Open questions are for genuinely deferrable unknowns, not decisions you
+
+      skipped. If a question would change the specs, the chosen approach, or
+
+      the task breakdown, resolve it now - ask the user instead of guessing.
 
 
       Focus on architecture and approach, not line-by-line implementation.
 
-      Reference the proposal for motivation and specs for requirements.
+      The proposal covers why and what; design covers how. Reference the
+
+      proposal for motivation and, once written, the specs for requirements -
+
+      if a section would only restate them, point to them instead.
 
 
       Good design docs explain the "why" behind technical decisions.
@@ -211,16 +309,16 @@ artifacts:
       Complete ADR review for this change by writing
       openspec/changes/<change>/adr.md. This change-local file is a concise
       review manifest and the OpenSpec completion marker for the adr artifact.
-      Existing files under <repo>/adr/ are decision history and context; they
+      Existing files under <repo>/doc/adr/ are decision history and context; they
       do not complete ADR review for a new change.
 
 
-      Durable Architecture Decision Records still live in <repo>/adr/ and
-      persist across changes. The path <repo>/adr/ means the target
-      repository's top-level adr/ folder beside openspec/, not any folder
+      Durable Architecture Decision Records still live in <repo>/doc/adr/ and
+      persist across changes. The path <repo>/doc/adr/ means the target
+      repository's top-level doc/adr/ folder beside openspec/, not any folder
       inside openspec/. If this change introduces a new durable architectural
       decision, create a repository-level ADR at
-      <repo>/adr/NNNN-kebab-title.md and reference it from
+      <repo>/doc/adr/NNNN-kebab-title.md and reference it from
       openspec/changes/<change>/adr.md. Do not duplicate the full ADR content
       in the manifest.
 
@@ -237,7 +335,7 @@ artifacts:
       Process:
 
 
-      1. Read every existing ADR in <repo>/adr/. Build the supersession graph
+      1. Read every existing ADR in <repo>/doc/adr/. Build the supersession graph
       from each ADR's Supersedes field. Note the highest sequence number in
       use. Record the currently in-force ADRs reviewed in the change-local
       adr.md manifest.
@@ -256,7 +354,7 @@ artifacts:
 
 
       3. For each qualifying decision, create a NEW file at
-      <repo>/adr/NNNN-kebab-title.md, where NNNN is a 4-digit sequence one
+      <repo>/doc/adr/NNNN-kebab-title.md, where NNNN is a 4-digit sequence one
       greater than the highest existing. Use the repository's ADR format
       (MADR-short: title, status/date, context, decision, consequences). If
       this decision replaces a prior in-force ADR, set Status to
@@ -285,6 +383,13 @@ artifacts:
     template: tasks.md
     instruction: >
       Create the task list that breaks down the implementation work.
+
+
+      Before writing tasks, check design.md for Open Questions. If any of them
+
+      would change what gets built, resolve them with the user first - do not
+
+      bake an unstated assumption into the task list.
 
 
       **IMPORTANT: Follow the template below exactly.** The apply phase parses
@@ -326,17 +431,18 @@ artifacts:
       ```
 
 
-      Reference specs for what to build, design for how to build it, and
-      <repo>/adr/ for the durable architectural commitments to honor.
+      Reference specs for what needs to be built, design for how to build it, and <repo>/doc/adr/ for the durable architectural commitments to honor.
+
 
       Each task should be verifiable - you know when it's done.
     requires:
       - specs
+      - design
       - adr
 apply:
   requires:
     - tasks
   tracks: tasks.md
-  instruction: |
+  instruction: |-
     Read context files, work through pending tasks, mark complete as you go.
     Pause if you hit blockers or need clarification.
