@@ -18,41 +18,10 @@ Do not use ADRs for transient implementation details, meeting notes, or insignif
 ## Workflow
 
 1. Identify the single decision. Split multiple decisions into multiple ADRs.
-2. Check `preferences.md` for `preferred-style`.
-3. If `preferred-style: unset`, ask the user which style to use, then record it in `preferences.md` before drafting.
-4. Use the matching file under `templates/`.
-5. Capture known facts only: context, requirements, constraints, options, rationale, decision makers, consequences.
-6. If facts are missing, mark them as `Unknown` or ask a focused question; do not invent context, options, or quality attributes.
-7. Write honest consequences: benefits, downsides, follow-up.
-8. Preserve history: supersede old accepted ADRs; do not rewrite them away.
-
-## Template Choice
-
-| Situation | Template |
-| --- | --- |
-| Detailed tradeoff record | `templates/madr-full.md` |
-| Concise tradeoff record | `templates/madr-minimal.md` |
-| Classic lightweight ADR | `templates/nygard.md` |
-| One-sentence summary | `templates/y-statement.md` |
-| Project-specific style | `templates/custom.md` |
-| Too little evidence | ADR review notes/questions, not accepted ADR |
-
-## Status Values
-
-| Status | Use when |
-| --- | --- |
-| Proposed | Under review |
-| Accepted | Team committed |
-| Deprecated | Historically relevant but no longer recommended |
-| Superseded | Replaced by another ADR; link it |
-
-## Preference Prompt
-
-If no preference is recorded, ask:
-
-> Which ADR style should I use and remember for this project: MADR full, MADR minimal, Nygard, Y-Statement, or custom?
-
-After the user answers, update `preferences.md` with the selected `preferred-style`. Do not ask again unless the user asks to change style.
+1. Capture known facts only: context, requirements, constraints, options, rationale, decision makers, consequences.
+1. If facts are missing, mark them as `Unknown` or ask a focused question; do not invent context, options, or quality attributes.
+1. Write honest consequences: benefits, downsides, follow-up.
+1. Preserve history: supersede old accepted ADRs; do not rewrite them away.
 
 ## Review Checklist
 
@@ -67,31 +36,68 @@ After the user answers, update `preferences.md` with the selected `preferred-sty
 
 ## Example
 
+<!-- taken from https://joshrotenberg.com/adrs/formats.html#structure-1 -->
 ```markdown
-# ADR-012: Use PostgreSQL for Orders
+---
+status: accepted
+date: 2024-01-15
+decision-makers:
+  - Alice
+  - Bob
+consulted:
+  - Carol
+informed:
+  - Dave
+---
 
-## Status
+# Use PostgreSQL for Persistence
 
-Accepted
+## Context and Problem Statement
 
-## Context
+We need a database for storing user data.
 
-Orders need relational constraints, consistency, and reporting joins. The team operates PostgreSQL well.
+## Decision Drivers
+
+* Need ACID compliance
+* Team has PostgreSQL experience
+* Open source preferred
 
 ## Considered Options
 
-- PostgreSQL: integrity, SQL reporting, familiar operations; migrations required.
-- MongoDB: flexible schema; weaker fit for consistency and joins.
+* PostgreSQL
+* MySQL
+* MongoDB
 
-## Decision
+## Decision Outcome
 
-We will use PostgreSQL because consistency, joins, and operational familiarity matter more than schema flexibility.
+Chosen option: "PostgreSQL", because it meets all requirements and the team is familiar with it.
 
-## Consequences
+### Consequences
 
-- Positive: Integrity and reporting align with needs.
-- Negative: Schema changes need migrations.
-- Follow-up: Define migration practice.
+* Good, because we have team expertise
+* Bad, because it requires more infrastructure than SQLite
+
+### Confirmation
+
+We will confirm this decision after the first production deployment.
+
+## Pros and Cons of the Options
+
+### PostgreSQL
+
+* Good, because ACID compliant
+* Good, because team experience
+* Neutral, because requires server setup
+
+### MySQL
+
+* Good, because widely used
+* Bad, because different SQL dialect
+
+### MongoDB
+
+* Good, because flexible schema
+* Bad, because not ACID compliant by default
 ```
 
 ## Common Mistakes
@@ -107,4 +113,4 @@ We will use PostgreSQL because consistency, joins, and operational familiarity m
 
 ## Sources
 
-adr.github.io: home, ADR templates, AD practices. See `templates/` for captured template variants.
+adr.github.io: home, ADR templates, AD practices.
