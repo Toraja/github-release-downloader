@@ -1,7 +1,7 @@
 default:
 	@just --list --unsorted
 
-tests:
+test:
 	@cargo test
 
 lint:
