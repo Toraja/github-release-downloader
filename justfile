@@ -2,7 +2,7 @@ default:
 	@just --list --unsorted
 
 test:
-	@cargo test
+	@cargo nextest
 
 lint:
 	@cargo clippy --all-targets --all-features -- --deny warnings
