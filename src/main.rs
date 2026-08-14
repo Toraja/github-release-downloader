@@ -67,6 +67,7 @@ fn run() -> Result<(), AppError> {
     let api_url = to_api_url(&cli.url)?;
     let release = fetch_release(&api_url)?;
     let asset = select_asset(&release.assets, &cli.pattern)?;
+    let reader = fetch_asset(asset)?;
 
     if let Some(ref entry) = cli.extract_entry {
         if !is_extractable(&asset.name) {
@@ -78,7 +79,6 @@ fn run() -> Result<(), AppError> {
             .and_then(|s| s.to_str())
             .unwrap_or(norm);
         let dest = resolve_output_path(entry_basename, cli.dir.as_deref(), cli.output.as_deref())?;
-        let reader = fetch_asset(asset)?;
         extract_archive_entry(reader, entry, &dest)?;
         println!("Extracted to: {}", dest.display());
         return Ok(());
@@ -89,14 +89,12 @@ fn run() -> Result<(), AppError> {
             return Err(AppError::UnsupportedFormat(asset.name.clone()));
         }
         let dest_dir = cli.dir.as_deref().unwrap_or(Path::new("."));
-        let reader = fetch_asset(asset)?;
         extract_archive(reader, dest_dir)?;
         println!("Extracted to: {}", dest_dir.display());
         return Ok(());
     }
 
     let dest = resolve_output_path(&asset.name, cli.dir.as_deref(), cli.output.as_deref())?;
-    let reader = fetch_asset(asset)?;
     save_to_file(reader, &dest)?;
     println!("Downloaded: {}", dest.display());
 
