@@ -98,22 +98,19 @@ pub fn fetch_asset(asset: &Asset) -> Result<impl Read + 'static, AppError> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use regex::Regex;
     use url::Url;
 
     use super::*;
+    use crate::error::AppError;
 
     fn make_asset(name: &str) -> Asset {
         Asset {
             name: name.to_string(),
             browser_download_url: format!("https://example.com/{}", name),
         }
-    }
-
-    #[test]
-    #[allow(clippy::invalid_regex)]
-    fn test_invalid_regex() {
-        assert!(Regex::new("[invalid").is_err());
     }
 
     #[test]
@@ -178,12 +175,12 @@ mod tests {
     #[test]
     fn test_non_github_domain() {
         let url = Url::parse("https://gitlab.com/owner/repo").unwrap();
-        assert!(to_api_url(&url).is_err());
+        assert_matches!(to_api_url(&url), Err(AppError::InvalidHost(h)) if h == "gitlab.com");
     }
 
     #[test]
     fn test_missing_repo_segment() {
         let url = Url::parse("https://github.com/owner").unwrap();
-        assert!(to_api_url(&url).is_err());
+        assert_matches!(to_api_url(&url), Err(AppError::InvalidPath(p)) if p == "/owner");
     }
 }

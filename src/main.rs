@@ -23,7 +23,7 @@ use output::resolve_output_path;
 ///
 /// Authentication: set the GITHUB_TOKEN environment variable to use an
 /// authenticated request and avoid the 60 req/hr unauthenticated rate limit.
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Cli {
     /// GitHub repository URL (e.g., https://github.com/owner/repo)
@@ -112,6 +112,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use clap::error::ErrorKind;
+
     use super::*;
 
     #[test]
@@ -125,7 +127,7 @@ mod tests {
             "--output",
             "/tmp/file.bin",
         ]);
-        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::ArgumentConflict);
     }
 
     #[test]
@@ -138,7 +140,7 @@ mod tests {
             "/tmp/file.bin",
             "--extract",
         ]);
-        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::ArgumentConflict);
     }
 
     #[test]
@@ -151,6 +153,6 @@ mod tests {
             "bin/tool",
             "--extract",
         ]);
-        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::ArgumentConflict);
     }
 }
