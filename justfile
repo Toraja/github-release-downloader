@@ -1,6 +1,9 @@
 default:
 	@just --list --unsorted
 
+build:
+	@cargo build --all-features
+
 test:
 	@cargo nextest
 
