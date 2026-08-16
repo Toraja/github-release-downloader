@@ -156,6 +156,11 @@ pub fn extract_archive_entry<R: Read>(reader: R, entry: &str, dest: &Path) -> Re
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_archive_path_has_preceeding_and_trailing_slash() {
+        assert_eq!(normalize_entry_path("./foo/bar/"), "foo/bar");
+    }
+
     /// Build an in-memory .tar.gz with the given (archive-path, content) pairs.
     /// Pass `None` as content to create a symlink entry (target = "symlink-target").
     fn make_tar_gz_with_entries(entries: &[(&str, Option<&str>)]) -> Vec<u8> {
