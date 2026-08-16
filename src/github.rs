@@ -120,10 +120,12 @@ mod tests {
             make_asset("gh_2.40.1_darwin_amd64.tar.gz"),
         ];
         let pattern = Regex::new("windows").unwrap();
-        let err = select_asset(&assets, &pattern).unwrap_err();
-        assert!(err.to_string().contains("No assets matched"));
-        assert!(err.to_string().contains("gh_2.40.1_linux_amd64.tar.gz"));
-        assert!(err.to_string().contains("gh_2.40.1_darwin_amd64.tar.gz"));
+        let err = select_asset(&assets, &pattern);
+        assert_matches!(
+            err,
+            Err(AppError::NoMatch{pattern:p, available:a})
+                if p == "windows" && a.contains("gh_2.40.1_linux_amd64.tar.gz") && a.contains("gh_2.40.1_darwin_amd64.tar.gz")
+        );
     }
 
     #[test]
@@ -134,11 +136,12 @@ mod tests {
             make_asset("gh_2.40.1_darwin_amd64.tar.gz"),
         ];
         let pattern = Regex::new("linux").unwrap();
-        let err = select_asset(&assets, &pattern).unwrap_err();
-        assert!(err.to_string().contains("matched multiple assets"));
-        assert!(err.to_string().contains("gh_2.40.1_linux_amd64.tar.gz"));
-        assert!(err.to_string().contains("gh_2.40.1_linux_arm64.tar.gz"));
-        assert!(!err.to_string().contains("darwin"));
+        let err = select_asset(&assets, &pattern);
+        assert_matches!(
+            err,
+            Err(AppError::MultipleMatches{pattern:p, matched:m})
+                if p == "linux" && m.contains("gh_2.40.1_linux_amd64.tar.gz") && m.contains("gh_2.40.1_linux_arm64.tar.gz") && !m.contains("darwin")
+        );
     }
 
     #[test]
