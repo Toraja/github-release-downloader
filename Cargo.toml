@@ -2,7 +2,7 @@
 name = "github-release-downloader"
 version = "0.1.0"
 edition = "2024"
-repository = "https://github.com/Toraja/cde"
+repository = "https://github.com/Toraja/github-release-downloader"
 description = "Download assets from the latest GitHub release of a repository"
 license = "MIT"
 authors = ["Toraja <Toraja@users.noreply.github.com>"]
