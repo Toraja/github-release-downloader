@@ -34,15 +34,10 @@ See `github-release-downloader --help` for more details.
 
 ## Releasing
 
-Releases are automated via [cargo-dist](https://axodotdev.github.io/cargo-dist). Pushing a version tag triggers the GitHub Actions workflow, which builds binaries for `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu`, then publishes them as a GitHub Release.
+Releases are automated via [cargo-dist](https://axodotdev.github.io/cargo-dist).
+Pushing a version tag triggers the GitHub Actions workflow, which builds binaries, then publishes them as a GitHub Release.
 
+To tag a new release, run:
 ```sh
-# Ensure the version in Cargo.toml is updated first, then:
-git tag v<VERSION>
-git push origin v<VERSION>
+just release-execute <level|version>
 ```
-
-The release appears at https://github.com/Toraja/cde/releases with the following artifacts per target:
-
-- `github-release-downloader-<TARGET>.tar.xz` — binary archive
-- `github-release-downloader-<TARGET>.tar.xz.sha256` — checksum
