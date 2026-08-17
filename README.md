@@ -12,6 +12,14 @@ Given a repository URL and a regex pattern, it fetches the release metadata, mat
 
 ## Installation
 
+### Use install script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Toraja/github-release-downloader/releases/latest/download/github-release-downloader-installer.sh | sh
+```
+
+### Build from source
+
 ```sh
 cargo install --path .
 ```
