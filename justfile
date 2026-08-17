@@ -7,6 +7,9 @@ build:
 test:
 	@cargo nextest
 
+test-coverage:
+	@cargo llvm-cov nextest --all-features --fail-under-lines 75
+
 lint:
 	@cargo clippy --all-targets --all-features -- --deny warnings
 
