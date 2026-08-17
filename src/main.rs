@@ -26,6 +26,7 @@ use output::resolve_output_path;
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Cli {
+    #[allow(rustdoc::bare_urls)]
     /// GitHub repository URL (e.g., https://github.com/owner/repo)
     url: Url,
 
