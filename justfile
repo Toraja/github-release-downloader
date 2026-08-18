@@ -5,7 +5,7 @@ build:
 	@cargo build --all-features
 
 test:
-	@cargo nextest
+	@cargo nextest run
 
 test-coverage:
 	@cargo llvm-cov nextest --all-features --fail-under-lines 75
