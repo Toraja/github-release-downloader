@@ -1,7 +1,7 @@
 ## 1. CLI Arguments
 
-- [x] 1.1 Add `--dir` / `-D` optional flag to the `Cli` struct using clap, accepting an `Option<PathBuf>`
-- [x] 1.2 Add `--output` / `-O` optional flag to the `Cli` struct using clap, accepting an `Option<PathBuf>`
+- [x] 1.1 Add `--dir` / `-D` optional flag to the `Args` struct using clap, accepting an `Option<PathBuf>`
+- [x] 1.2 Add `--output` / `-O` optional flag to the `Args` struct using clap, accepting an `Option<PathBuf>`
 - [x] 1.3 Mark `--dir` and `--output` as mutually exclusive using clap's `conflicts_with`
 - [x] 1.4 Add help text for `--dir` (destination directory, original filename preserved)
 - [x] 1.5 Add help text for `--output` (exact file path, enables rename; error if path is an existing directory)

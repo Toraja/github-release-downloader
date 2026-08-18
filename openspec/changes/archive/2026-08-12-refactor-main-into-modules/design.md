@@ -14,7 +14,7 @@
 **Non-Goals:**
 - Moving tests to separate files (deferred)
 - Adding new features or changing CLI flags
-- Switching HTTP client or adding async
+- Switching HTTP argsent or adding async
 
 ## Decisions
 
@@ -22,7 +22,7 @@
 
 ```
 src/
-├── main.rs       ← Cli struct, main(), run()
+├── main.rs       ← Args struct, main(), run()
 ├── github.rs     ← Asset, Release, to_api_url(), fetch_release(), select_asset()
 ├── archive.rs    ← is_extractable(), normalize_entry_path(), unpack_tar_gz(),
 │                    extract_archive_entry(), save_to_file()
@@ -111,10 +111,10 @@ fn main() {
 }
 
 fn run() -> Result<(), AppError> {
-    let cli = Cli::parse();
-    let api_url = to_api_url(&cli.url)?;
+    let args = Args::parse();
+    let api_url = to_api_url(&args.url)?;
     let release = fetch_release(&api_url)?;
-    let asset = select_asset(&release.assets, &cli.pattern)?;
+    let asset = select_asset(&release.assets, &args.pattern)?;
     // dispatch to extract_entry / extract_archive / save_to_file
     Ok(())
 }

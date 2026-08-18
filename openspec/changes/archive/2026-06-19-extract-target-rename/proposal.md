@@ -22,7 +22,7 @@ When extracting an archive with `--extract`, the entire archive contents are unp
 
 ## Impact
 
-- `src/main.rs`: Add the new flag to the `Cli` struct; add entry-filtering logic to the extraction path; update `conflicts_with` constraints; update `unpack_tar_gz` (or add a sibling function) to unpack only the specified entry.
+- `src/main.rs`: Add the new flag to the `Args` struct; add entry-filtering logic to the extraction path; update `conflicts_with` constraints; update `unpack_tar_gz` (or add a sibling function) to unpack only the specified entry.
 - Existing `--extract` behaviour is unchanged.
 - The `--output` flag gains a new valid use-case (pairing with the new flag) but its definition does not change.
 - Tests: add cases for entry selection, renaming, `--dir` fallback, and mutual exclusion with `--extract`.

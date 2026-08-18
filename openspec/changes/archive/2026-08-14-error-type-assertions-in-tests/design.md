@@ -41,4 +41,4 @@ For `AppError::InvalidHost` and `AppError::InvalidPath` the inner string is a me
 
 - `std::assert_matches` is a stable feature since 1.82, so no risk on current toolchain. If the project ever needed to support an older MSRV, this would need a dev-dependency on the `assert_matches` crate instead — unlikely given edition 2024 is already in use.
 - Matching on inner string values of `AppError` variants makes tests slightly more coupled to the exact string stored in the error. This is acceptable: the inner value is the host/path that triggered the error and is part of the error's contract.
-- `#[derive(Debug)]` was added to `Cli` to enable `.unwrap_err()` in the clap tests (which requires `T: Debug`). This is a minor production code change that was not anticipated in the proposal; it is benign and follows standard practice for clap structs.
+- `#[derive(Debug)]` was added to `Args` to enable `.unwrap_err()` in the clap tests (which requires `T: Debug`). This is a minor production code change that was not anticipated in the proposal; it is benign and follows standard practice for clap structs.

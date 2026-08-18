@@ -26,7 +26,7 @@
 ## 6. Refactor: Use `url::Url` for CLI argument
 
 - [x] 6.1 Add `url` crate dependency to `Cargo.toml`
-- [x] 6.2 Change `Cli.url` field type from `String` to `url::Url`
+- [x] 6.2 Change `Args.url` field type from `String` to `url::Url`
 - [x] 6.3 Update `to_api_url` signature to accept `&url::Url` instead of `&str` and simplify validation logic to use parsed URL fields
-- [x] 6.4 Update call site in `main` to pass `&cli.url` directly
+- [x] 6.4 Update call site in `main` to pass `&args.url` directly
 - [x] 6.5 Update unit tests to construct `url::Url` values via `Url::parse` instead of raw strings

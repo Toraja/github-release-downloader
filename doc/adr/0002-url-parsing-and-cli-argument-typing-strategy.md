@@ -29,7 +29,7 @@ Chosen option: "`url` crate with `url::Url` as the CLI argument type", because t
 
 ### Confirmation
 
-Confirmed via code review that `Cli.url` is typed as `url::Url` and that `to_api_url` uses the parsed struct methods rather than string splitting.
+Confirmed via code review that `Args.url` is typed as `url::Url` and that `to_api_url` uses the parsed struct methods rather than string splitting.
 
 <!-- This is an optional element. Feel free to remove. -->
 ## Pros and Cons of the Options

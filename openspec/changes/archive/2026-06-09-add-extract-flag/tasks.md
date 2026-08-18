@@ -4,7 +4,7 @@
 
 ## 2. CLI Flag
 
-- [x] 2.1 Add `--extract` flag to the `Cli` struct with `conflicts_with = "output"`
+- [x] 2.1 Add `--extract` flag to the `Args` struct with `conflicts_with = "output"`
 
 ## 3. Format Validation
 

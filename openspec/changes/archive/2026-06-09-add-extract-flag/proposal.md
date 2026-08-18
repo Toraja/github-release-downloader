@@ -24,5 +24,5 @@ Users frequently download release assets that are compressed archives (e.g. `.ta
 
 ## Impact
 
-- `src/main.rs`: new `--extract` flag in `Cli`, new extraction logic, updated success message handling
+- `src/main.rs`: new `--extract` flag in `Args`, new extraction logic, updated success message handling
 - `Cargo.toml`: new dependency for tar/gzip extraction (e.g. `flate2`, `tar`)

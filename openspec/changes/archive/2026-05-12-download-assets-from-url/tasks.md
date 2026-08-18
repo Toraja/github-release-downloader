@@ -6,7 +6,7 @@
 
 ## 2. CLI Arguments
 
-- [x] 2.1 Add a second positional argument `pattern` (regex string) to the `Cli` struct
+- [x] 2.1 Add a second positional argument `pattern` (regex string) to the `Args` struct
 - [x] 2.2 Add help text mentioning `GITHUB_TOKEN` env var for authenticated requests
 
 ## 3. Regex Validation

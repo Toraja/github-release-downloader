@@ -22,5 +22,5 @@ Currently the tool always saves downloaded assets to the current working directo
 
 ## Impact
 
-- `src/main.rs` (or wherever `Cli` and download logic live): add `--dir` and `--output` flags to `Cli` struct, mark them mutually exclusive, and thread the resolved path through to the file-write step
+- `src/main.rs` (or wherever `Args` and download logic live): add `--dir` and `--output` flags to `Args` struct, mark them mutually exclusive, and thread the resolved path through to the file-write step
 - No breaking changes — the flag is optional with existing default behaviour

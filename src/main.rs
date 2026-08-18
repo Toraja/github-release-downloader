@@ -25,7 +25,7 @@ use output::resolve_output_path;
 /// authenticated request and avoid the 60 req/hr unauthenticated rate limit.
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
-struct Cli {
+struct Args {
     #[allow(rustdoc::bare_urls)]
     /// GitHub repository URL (e.g., https://github.com/owner/repo)
     url: Url,
@@ -63,14 +63,14 @@ struct Cli {
 }
 
 fn run() -> Result<(), AppError> {
-    let cli = Cli::parse();
+    let args = Args::parse();
 
-    let api_url = to_api_url(&cli.url)?;
+    let api_url = to_api_url(&args.url)?;
     let release = fetch_release(&api_url)?;
-    let asset = select_asset(&release.assets, &cli.pattern)?;
+    let asset = select_asset(&release.assets, &args.pattern)?;
     let reader = fetch_asset(asset)?;
 
-    if let Some(ref entry) = cli.extract_entry {
+    if let Some(ref entry) = args.extract_entry {
         if !is_extractable(&asset.name) {
             return Err(AppError::UnsupportedFormat(asset.name.clone()));
         }
@@ -79,23 +79,24 @@ fn run() -> Result<(), AppError> {
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or(norm);
-        let dest = resolve_output_path(entry_basename, cli.dir.as_deref(), cli.output.as_deref())?;
+        let dest =
+            resolve_output_path(entry_basename, args.dir.as_deref(), args.output.as_deref())?;
         extract_archive_entry(reader, entry, &dest)?;
         println!("Extracted to: {}", dest.display());
         return Ok(());
     }
 
-    if cli.extract {
+    if args.extract {
         if !is_extractable(&asset.name) {
             return Err(AppError::UnsupportedFormat(asset.name.clone()));
         }
-        let dest_dir = cli.dir.as_deref().unwrap_or(Path::new("."));
+        let dest_dir = args.dir.as_deref().unwrap_or(Path::new("."));
         extract_archive(reader, dest_dir)?;
         println!("Extracted to: {}", dest_dir.display());
         return Ok(());
     }
 
-    let dest = resolve_output_path(&asset.name, cli.dir.as_deref(), cli.output.as_deref())?;
+    let dest = resolve_output_path(&asset.name, args.dir.as_deref(), args.output.as_deref())?;
     save_to_file(reader, &dest)?;
     println!("Downloaded: {}", dest.display());
 
@@ -117,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_dir_and_output_mutually_exclusive() {
-        let result = Cli::try_parse_from([
+        let result = Args::try_parse_from([
             "prog",
             "https://github.com/owner/repo",
             "pattern",
@@ -131,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_extract_and_output_mutually_exclusive() {
-        let result = Cli::try_parse_from([
+        let result = Args::try_parse_from([
             "prog",
             "https://github.com/owner/repo",
             "pattern",
@@ -144,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_extract_entry_and_extract_mutually_exclusive() {
-        let result = Cli::try_parse_from([
+        let result = Args::try_parse_from([
             "prog",
             "https://github.com/owner/repo",
             "pattern",

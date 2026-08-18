@@ -1,6 +1,6 @@
 ## 1. CLI Flag
 
-- [x] 1.1 Add `extract_entry: Option<String>` field to `Cli` with short flag `-X`, long `--extract-entry`, and `conflicts_with = "extract"`
+- [x] 1.1 Add `extract_entry: Option<String>` field to `Args` with short flag `-X`, long `--extract-entry`, and `conflicts_with = "extract"`
 
 ## 2. Destination Resolution
 
@@ -15,7 +15,7 @@
 
 ## 4. Integration in main
 
-- [x] 4.1 In `main`, after asset selection, check `cli.extract_entry`; validate format with `is_extractable`, resolve destination with `resolve_entry_dest`, and call `extract_entry`
+- [x] 4.1 In `main`, after asset selection, check `args.extract_entry`; validate format with `is_extractable`, resolve destination with `resolve_entry_dest`, and call `extract_entry`
 
 ## 5. Tests
 
