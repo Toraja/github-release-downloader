@@ -87,12 +87,14 @@ fn run() -> Result<(), AppError> {
     let api_url = to_api_url(&args.url)?;
     let release = fetch_release(&api_url)?;
     let asset = select_asset(&release.assets, &args.pattern)?;
+
+    if args.extract && !is_extractable(&asset.name) {
+        return Err(AppError::UnsupportedFormat(asset.name.clone()));
+    }
+
     let reader = fetch_asset(asset)?;
 
     if args.extract {
-        if !is_extractable(&asset.name) {
-            return Err(AppError::UnsupportedFormat(asset.name.clone()));
-        }
         let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
         let landing = extract_archive(reader, args.archive_entry.as_deref(), dest)?;
         println!("Extracted to: {}", landing.display());
