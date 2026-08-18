@@ -1,8 +1,4 @@
-## Purpose
-
-Specifies how the CLI handles extraction of downloaded archive assets when the `--extract` flag is provided.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Extract .tar.gz asset when --extract is specified
 When the `--extract` flag is provided without `--archive-entry`, the CLI SHALL stream the downloaded asset directly into a tar extractor and unpack the **entire** archive to the destination directory, then exit with code 0. The archive is not saved to disk. When `--archive-entry` is also provided, extraction is narrowed to that single entry (see the `extract-entry` capability); the whole-archive behaviour applies only in the absence of `--archive-entry`.

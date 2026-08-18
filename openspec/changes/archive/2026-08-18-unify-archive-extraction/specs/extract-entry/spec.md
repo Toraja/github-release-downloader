@@ -1,4 +1,4 @@
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Flag definition
 The CLI SHALL expose an `--archive-entry` flag (short: `-X`) that accepts a single string argument representing a path within the archive (e.g. `bin/mytool` or `share/config`).
@@ -10,17 +10,6 @@ The CLI SHALL expose an `--archive-entry` flag (short: `-X`) that accepts a sing
 #### Scenario: Flag rejected without a value
 - **WHEN** the user passes `--archive-entry` with no argument
 - **THEN** the CLI exits with a parse error
-
-### Requirement: Requires --extract
-`--archive-entry` SHALL require `--extract` to be present in the same invocation. It qualifies whole-archive extraction by narrowing it to a single entry; it is not a standalone mode. Passing `--archive-entry` without `--extract` MUST produce a parse-time error.
-
-#### Scenario: Archive-entry without extract
-- **WHEN** the user passes `--archive-entry bin/mytool` without `--extract`
-- **THEN** the CLI exits with a clap error stating that `--archive-entry` requires `--extract`, before any network request is made
-
-#### Scenario: Archive-entry with extract
-- **WHEN** the user passes both `--extract` and `--archive-entry bin/mytool`
-- **THEN** the CLI parses successfully and narrows extraction to the `bin/mytool` entry
 
 ### Requirement: Archive format validation
 `--archive-entry` SHALL only work with `.tar.gz` and `.tgz` archives. If the matched asset has an unsupported format, the command MUST exit with a non-zero status and a descriptive error message.
@@ -104,3 +93,22 @@ When `--archive-entry` is used, the archive MUST NOT be written to disk; it SHAL
 #### Scenario: Extraction leaves no archive file
 - **WHEN** `--extract --archive-entry bin/mytool` completes successfully
 - **THEN** no `.tar.gz` or `.tgz` file is present in the working directory or destination directory
+
+## REMOVED Requirements
+
+### Requirement: Mutual exclusion with --extract
+**Reason**: The entry flag is no longer an alternative to `--extract` but a qualifier of it. It now *requires* `--extract` rather than conflicting with it (see the new "Requires --extract" requirement).
+**Migration**: Replace `--extract-entry PATH` with `--extract --archive-entry PATH`. Invocations that previously passed `--extract-entry` alone must now also pass `--extract`.
+
+## ADDED Requirements
+
+### Requirement: Requires --extract
+`--archive-entry` SHALL require `--extract` to be present in the same invocation. It qualifies whole-archive extraction by narrowing it to a single entry; it is not a standalone mode. Passing `--archive-entry` without `--extract` MUST produce a parse-time error.
+
+#### Scenario: Archive-entry without extract
+- **WHEN** the user passes `--archive-entry bin/mytool` without `--extract`
+- **THEN** the CLI exits with a clap error stating that `--archive-entry` requires `--extract`, before any network request is made
+
+#### Scenario: Archive-entry with extract
+- **WHEN** the user passes both `--extract` and `--archive-entry bin/mytool`
+- **THEN** the CLI parses successfully and narrows extraction to the `bin/mytool` entry

@@ -1,10 +1,45 @@
 use std::fs::{self, File};
 use std::io::{self, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use flate2::read::GzDecoder;
 
 use crate::error::AppError;
+
+/// Describes where the extracted result should land.
+///
+/// - `Into(dir)`: place the naturally-named result *into* this directory
+///   (whole archive unpacks directly into `dir`; a single entry lands at `dir/basename(entry)`).
+/// - `Exact(path)`: use this path verbatim (renames the result).
+///   Valid only when extracting a single entry; passing `Exact` for whole-archive
+///   extraction is a programming error guarded by `Args::validate` in `main`.
+#[derive(Debug)]
+pub enum Destination {
+    Into(PathBuf),
+    Exact(PathBuf),
+}
+
+impl Destination {
+    /// Resolve a `Destination` from two optional paths.
+    /// `exact` takes precedence; falls back to `into`, defaulting to `.`.
+    /// Returns an error if `exact` points to an existing directory.
+    pub fn resolve(
+        into: Option<&std::path::Path>,
+        exact: Option<&std::path::Path>,
+    ) -> Result<Self, crate::error::AppError> {
+        match exact {
+            Some(p) => {
+                if p.is_dir() {
+                    return Err(crate::error::AppError::OutputIsDir(p.display().to_string()));
+                }
+                Ok(Destination::Exact(p.to_path_buf()))
+            }
+            None => Ok(Destination::Into(
+                into.unwrap_or(std::path::Path::new(".")).to_path_buf(),
+            )),
+        }
+    }
+}
 
 pub fn is_extractable(asset_name: &str) -> bool {
     asset_name.ends_with(".tar.gz") || asset_name.ends_with(".tgz")
@@ -16,8 +51,17 @@ pub fn normalize_entry_path(s: &str) -> &str {
     s.trim_end_matches('/')
 }
 
-pub fn save_to_file(reader: impl Read, dest: &Path) -> Result<(), AppError> {
-    if let Some(parent) = dest.parent()
+pub fn save_to_file(
+    reader: impl Read,
+    asset_name: &str,
+    dest: Destination,
+) -> Result<PathBuf, AppError> {
+    let path = match dest {
+        Destination::Into(dir) => dir.join(asset_name),
+        Destination::Exact(p) => p,
+    };
+
+    if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
         fs::create_dir_all(parent).map_err(|e| AppError::CreateDir {
@@ -26,27 +70,67 @@ pub fn save_to_file(reader: impl Read, dest: &Path) -> Result<(), AppError> {
         })?;
     }
 
-    let mut file = File::create(dest).map_err(|e| AppError::CreateFile {
-        path: dest.display().to_string(),
+    let mut file = File::create(&path).map_err(|e| AppError::CreateFile {
+        path: path.display().to_string(),
         source: e,
     })?;
 
     let mut reader = reader;
     io::copy(&mut reader, &mut file).map_err(|e| AppError::WriteFile {
-        path: dest.display().to_string(),
+        path: path.display().to_string(),
         source: e,
     })?;
 
-    Ok(())
+    Ok(path)
 }
 
-pub fn extract_archive(reader: impl Read, dest_dir: &Path) -> Result<(), AppError> {
-    fs::create_dir_all(dest_dir).map_err(|e| AppError::CreateDir {
-        path: dest_dir.display().to_string(),
-        source: e,
-    })?;
-
-    unpack_tar_gz(reader, dest_dir)
+/// Unified extraction entry point.
+///
+/// - `entry = None`: extract the whole archive into the directory described by `dest`.
+///   `Destination::Exact` is invalid here (guarded by `Args::validate`).
+/// - `entry = Some(path)`: extract a single file or directory entry, landing it at
+///   the path resolved from `dest`.
+///
+/// Returns the filesystem path of the extracted result.
+pub fn extract_archive(
+    reader: impl Read,
+    entry: Option<&str>,
+    dest: Destination,
+) -> Result<PathBuf, AppError> {
+    match entry {
+        None => {
+            // Whole-archive extraction. Destination::Exact is unreachable here because
+            // Args::validate rejects --output without --archive-entry.
+            let dir = match dest {
+                Destination::Into(d) => d,
+                Destination::Exact(_) => unreachable!(
+                    "Destination::Exact is invalid for whole-archive extraction; \
+                     Args::validate should have caught this"
+                ),
+            };
+            fs::create_dir_all(&dir).map_err(|e| AppError::CreateDir {
+                path: dir.display().to_string(),
+                source: e,
+            })?;
+            unpack_tar_gz(reader, &dir)?;
+            Ok(dir)
+        }
+        Some(entry_path) => {
+            let norm = normalize_entry_path(entry_path);
+            let landing = match dest {
+                Destination::Exact(p) => p,
+                Destination::Into(dir) => {
+                    let basename = Path::new(norm)
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or(norm);
+                    dir.join(basename)
+                }
+            };
+            extract_archive_entry(reader, entry_path, &landing)?;
+            Ok(landing)
+        }
+    }
 }
 
 pub fn unpack_tar_gz<R: Read>(reader: R, dest_dir: &Path) -> Result<(), AppError> {
@@ -57,7 +141,7 @@ pub fn unpack_tar_gz<R: Read>(reader: R, dest_dir: &Path) -> Result<(), AppError
         .map_err(|e| AppError::ArchiveExtract(e.to_string()))
 }
 
-/// Core logic for `--extract-entry`: iterate the tar.gz stream and extract the
+/// Core logic for single-entry extraction: iterate the tar.gz stream and extract the
 /// matching file or directory entry to `dest`.
 ///
 /// - File entry: exact normalised-path match → written directly to `dest`.
@@ -65,7 +149,7 @@ pub fn unpack_tar_gz<R: Read>(reader: R, dest_dir: &Path) -> Result<(), AppError
 /// - Symlink as the specified entry → error.
 /// - Symlink as a child during directory extraction → warning + skip.
 /// - No match → error listing top-level archive entries.
-pub fn extract_archive_entry<R: Read>(reader: R, entry: &str, dest: &Path) -> Result<(), AppError> {
+fn extract_archive_entry<R: Read>(reader: R, entry: &str, dest: &Path) -> Result<(), AppError> {
     let gz = GzDecoder::new(reader);
     let mut archive = tar::Archive::new(gz);
 
@@ -154,11 +238,59 @@ pub fn extract_archive_entry<R: Read>(reader: R, entry: &str, dest: &Path) -> Re
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     #[test]
     fn test_archive_path_has_preceeding_and_trailing_slash() {
         assert_eq!(normalize_entry_path("./foo/bar/"), "foo/bar");
+    }
+
+    // ── Destination::resolve ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_destination_resolve_no_args_uses_current_dir() {
+        let dest = Destination::resolve(None, None).unwrap();
+        assert_matches!(dest, Destination::Into(d) if d == std::path::Path::new("."));
+    }
+
+    #[test]
+    fn test_destination_resolve_into_existing_dir_appends_nothing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dest = Destination::resolve(Some(tmp.path()), None).unwrap();
+        assert_matches!(dest, Destination::Into(d) if d == tmp.path());
+    }
+
+    #[test]
+    fn test_destination_resolve_into_non_existing_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let non_existing = tmp.path().join("subdir");
+        let dest = Destination::resolve(Some(&non_existing), None).unwrap();
+        assert_matches!(dest, Destination::Into(d) if d == non_existing);
+    }
+
+    #[test]
+    fn test_destination_resolve_exact_non_existing_path_used_as_is() {
+        let dest =
+            Destination::resolve(None, Some(std::path::Path::new("/tmp/renamed.bin"))).unwrap();
+        assert_matches!(dest, Destination::Exact(p) if p == std::path::Path::new("/tmp/renamed.bin"));
+    }
+
+    #[test]
+    fn test_destination_resolve_exact_existing_file_used_as_is() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file_path = tmp.path().join("existing.bin");
+        std::fs::File::create(&file_path).unwrap();
+        let dest = Destination::resolve(None, Some(&file_path)).unwrap();
+        assert_matches!(dest, Destination::Exact(p) if p == file_path);
+    }
+
+    #[test]
+    fn test_destination_resolve_exact_existing_directory_returns_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let err = Destination::resolve(None, Some(tmp.path())).unwrap_err();
+        assert_matches!(err, AppError::OutputIsDir(_));
     }
 
     /// Build an in-memory .tar.gz with the given (archive-path, content) pairs.
@@ -241,7 +373,24 @@ mod tests {
         );
     }
 
-    // ── file entry → default destination ────────────────────────────────────
+    // ── whole-archive extraction ─────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_whole_archive_into_dir() {
+        let data = make_tar_gz_with_entries(&[
+            ("bin/tool", Some("binary")),
+            ("README.md", Some("readme")),
+        ]);
+        let tmp = tempfile::tempdir().unwrap();
+        let dest_dir = tmp.path().join("out");
+        let landing =
+            extract_archive(data.as_slice(), None, Destination::Into(dest_dir.clone())).unwrap();
+        assert_eq!(landing, dest_dir);
+        assert!(dest_dir.join("bin/tool").exists());
+        assert!(dest_dir.join("README.md").exists());
+    }
+
+    // ── file entry → default destination (Into) ──────────────────────────────
 
     #[test]
     fn test_extract_entry_file_default_dest() {
@@ -250,36 +399,52 @@ mod tests {
             ("README.md", Some("readme")),
         ]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("tool");
-        extract_archive_entry(data.as_slice(), "bin/tool", &dest).unwrap();
-        assert!(dest.exists());
-        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "binary content");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("bin/tool"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap();
+        assert_eq!(landing, tmp.path().join("tool"));
+        assert_eq!(std::fs::read_to_string(&landing).unwrap(), "binary content");
     }
 
-    // ── file entry → --dir ───────────────────────────────────────────────────
+    // ── file entry → --dir (Into with explicit dir) ──────────────────────────
 
     #[test]
     fn test_extract_entry_file_with_dir() {
         let data = make_tar_gz_with_entries(&[("bin/tool", Some("binary"))]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("tool");
-        extract_archive_entry(data.as_slice(), "bin/tool", &dest).unwrap();
-        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "binary");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("bin/tool"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap();
+        assert_eq!(std::fs::read_to_string(&landing).unwrap(), "binary");
     }
 
-    // ── file entry → --output (rename) ──────────────────────────────────────
+    // ── file entry → --output (rename, Exact) ────────────────────────────────
 
     #[test]
     fn test_extract_entry_file_with_output_rename() {
         let data = make_tar_gz_with_entries(&[("bin/tool", Some("renamed content"))]);
         let tmp = tempfile::tempdir().unwrap();
         let dest = tmp.path().join("mytool");
-        extract_archive_entry(data.as_slice(), "bin/tool", &dest).unwrap();
-        assert!(dest.exists());
-        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "renamed content");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("bin/tool"),
+            Destination::Exact(dest.clone()),
+        )
+        .unwrap();
+        assert_eq!(landing, dest);
+        assert_eq!(
+            std::fs::read_to_string(&landing).unwrap(),
+            "renamed content"
+        );
     }
 
-    // ── directory entry → default destination ───────────────────────────────
+    // ── directory entry → default destination (Into) ─────────────────────────
 
     #[test]
     fn test_extract_entry_dir_default_dest() {
@@ -289,25 +454,42 @@ mod tests {
             ("other/file.txt", Some("other")),
         ]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("config");
-        extract_archive_entry(data.as_slice(), "share/config", &dest).unwrap();
-        assert_eq!(std::fs::read_to_string(dest.join("a.conf")).unwrap(), "aaa");
-        assert_eq!(std::fs::read_to_string(dest.join("b.conf")).unwrap(), "bbb");
-        assert!(!tmp.path().join("config").join("../other").exists());
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("share/config"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap();
+        assert_eq!(landing, tmp.path().join("config"));
+        assert_eq!(
+            std::fs::read_to_string(landing.join("a.conf")).unwrap(),
+            "aaa"
+        );
+        assert_eq!(
+            std::fs::read_to_string(landing.join("b.conf")).unwrap(),
+            "bbb"
+        );
     }
 
-    // ── directory entry → --dir ──────────────────────────────────────────────
+    // ── directory entry → --dir (Into) ───────────────────────────────────────
 
     #[test]
     fn test_extract_entry_dir_with_dir_flag() {
         let data = make_tar_gz_with_entries(&[("pkg/lib/x.so", Some("lib"))]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("lib");
-        extract_archive_entry(data.as_slice(), "pkg/lib", &dest).unwrap();
-        assert_eq!(std::fs::read_to_string(dest.join("x.so")).unwrap(), "lib");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("pkg/lib"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(landing.join("x.so")).unwrap(),
+            "lib"
+        );
     }
 
-    // ── directory entry → --output (rename root) ────────────────────────────
+    // ── directory entry → --output (rename root, Exact) ──────────────────────
 
     #[test]
     fn test_extract_entry_dir_with_output_rename() {
@@ -317,15 +499,24 @@ mod tests {
         ]);
         let tmp = tempfile::tempdir().unwrap();
         let dest = tmp.path().join("myconfig");
-        extract_archive_entry(data.as_slice(), "share/config", &dest).unwrap();
-        assert_eq!(std::fs::read_to_string(dest.join("a.conf")).unwrap(), "aaa");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("share/config"),
+            Destination::Exact(dest.clone()),
+        )
+        .unwrap();
+        assert_eq!(landing, dest);
         assert_eq!(
-            std::fs::read_to_string(dest.join("sub/b.conf")).unwrap(),
+            std::fs::read_to_string(landing.join("a.conf")).unwrap(),
+            "aaa"
+        );
+        assert_eq!(
+            std::fs::read_to_string(landing.join("sub/b.conf")).unwrap(),
             "bbb"
         );
     }
 
-    // ── directory entry → merges into existing dest, overlapping file overwritten
+    // ── directory entry → merges into existing dest ──────────────────────────
 
     #[test]
     fn test_extract_entry_dir_merges_into_existing_dest() {
@@ -339,7 +530,12 @@ mod tests {
         std::fs::write(dest.join("foo/bar"), "original").unwrap();
         std::fs::write(dest.join("foo/quux"), "also original").unwrap();
 
-        extract_archive_entry(data.as_slice(), "mydir", &dest).unwrap();
+        extract_archive(
+            data.as_slice(),
+            Some("mydir"),
+            Destination::Exact(dest.clone()),
+        )
+        .unwrap();
 
         assert_eq!(
             std::fs::read_to_string(dest.join("foo/bar")).unwrap(),
@@ -362,14 +558,14 @@ mod tests {
         let data =
             make_tar_gz_with_entries(&[("bin/tool", Some("x")), ("share/man/tool.1", Some("y"))]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("out");
-        let err = extract_archive_entry(data.as_slice(), "no/such/path", &dest).unwrap_err();
-        let msg = err.to_string();
-        assert!(msg.contains("not found"), "expected 'not found' in: {msg}");
-        assert!(msg.contains("bin"), "expected top-level 'bin' in: {msg}");
-        assert!(
-            msg.contains("share"),
-            "expected top-level 'share' in: {msg}"
+        let err = extract_archive(
+            data.as_slice(),
+            Some("no/such/path"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap_err();
+        assert_matches!(err, AppError::EntryNotFound(entry, top_level)
+            if entry == "no/such/path" && top_level.contains("bin") && top_level.contains("share")
         );
     }
 
@@ -379,12 +575,13 @@ mod tests {
     fn test_extract_entry_symlink_direct_returns_error() {
         let data = make_tar_gz_with_entries(&[("bin/tool", None)]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("tool");
-        let err = extract_archive_entry(data.as_slice(), "bin/tool", &dest).unwrap_err();
-        assert!(
-            err.to_string().contains("symlink"),
-            "expected 'symlink' in error: {err}"
-        );
+        let err = extract_archive(
+            data.as_slice(),
+            Some("bin/tool"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap_err();
+        assert_matches!(err, AppError::SymlinkEntry(entry) if entry == "bin/tool");
     }
 
     // ── child symlinks during directory extraction → skip + warn ────────────
@@ -394,10 +591,14 @@ mod tests {
         let data =
             make_tar_gz_with_entries(&[("pkg/real.txt", Some("real")), ("pkg/link.txt", None)]);
         let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("pkg");
-        extract_archive_entry(data.as_slice(), "pkg", &dest).unwrap();
-        assert!(dest.join("real.txt").exists());
-        assert!(!dest.join("link.txt").exists());
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("pkg"),
+            Destination::Into(tmp.path().to_path_buf()),
+        )
+        .unwrap();
+        assert!(landing.join("real.txt").exists());
+        assert!(!landing.join("link.txt").exists());
     }
 
     // ── parent directories created automatically ─────────────────────────────
@@ -407,7 +608,12 @@ mod tests {
         let data = make_tar_gz_with_entries(&[("bin/tool", Some("content"))]);
         let tmp = tempfile::tempdir().unwrap();
         let dest = tmp.path().join("new/nested/dir/tool");
-        extract_archive_entry(data.as_slice(), "bin/tool", &dest).unwrap();
-        assert_eq!(std::fs::read_to_string(&dest).unwrap(), "content");
+        let landing = extract_archive(
+            data.as_slice(),
+            Some("bin/tool"),
+            Destination::Exact(dest.clone()),
+        )
+        .unwrap();
+        assert_eq!(std::fs::read_to_string(&landing).unwrap(), "content");
     }
 }

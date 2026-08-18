@@ -6,7 +6,9 @@ Given a repository URL and a regex pattern, it fetches the release metadata, mat
 ## Features
 
 - Downloads the latest release asset matching a regex pattern
-- Streams and extracts `.tar.gz`/`.tgz` archives without writing the archive to disk
+- Streams and extracts `.tar.gz`/`.tgz` archives without writing the archive to disk (`--extract`)
+- Optionally narrows extraction to a single file or directory entry within the archive (`--archive-entry`)
+- Extracted entries can be renamed at the destination with `--output`
 - Supports authenticated requests via `GITHUB_TOKEN` to avoid rate limiting
 - Flexible output path control with `--dir` and `--output` flags
 
