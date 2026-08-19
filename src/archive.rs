@@ -34,9 +34,13 @@ impl Destination {
                 }
                 Ok(Destination::Exact(p.to_path_buf()))
             }
-            None => Ok(Destination::Into(
-                into.unwrap_or(std::path::Path::new(".")).to_path_buf(),
-            )),
+            None => {
+                let p = into.unwrap_or(std::path::Path::new("."));
+                if p.is_file() {
+                    return Err(crate::error::AppError::DirIsFile(p.display().to_string()));
+                }
+                Ok(Destination::Into(p.to_path_buf()))
+            }
         }
     }
 }
@@ -291,6 +295,15 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let err = Destination::resolve(None, Some(tmp.path())).unwrap_err();
         assert_matches!(err, AppError::OutputIsDir(_));
+    }
+
+    #[test]
+    fn test_destination_resolve_into_existing_file_returns_error() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file_path = tmp.path().join("existing.bin");
+        std::fs::File::create(&file_path).unwrap();
+        let err = Destination::resolve(Some(&file_path), None).unwrap_err();
+        assert_matches!(err, AppError::DirIsFile(_));
     }
 
     /// Build an in-memory .tar.gz with the given (archive-path, content) pairs.

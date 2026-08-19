@@ -26,6 +26,9 @@ pub enum AppError {
     #[error("--output path '{0}' is an existing directory; use --dir to save into a directory")]
     OutputIsDir(String),
 
+    #[error("--dir path '{0}' is an existing file; it must be a directory")]
+    DirIsFile(String),
+
     #[error("Failed to create directory '{path}': {source}")]
     CreateDir {
         path: String,
