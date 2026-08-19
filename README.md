@@ -16,6 +16,8 @@ Given a repository URL and a regex pattern, it fetches the release metadata, mat
 
 ### Use install script
 
+This will install the latest release binary to `$HOME/.local/bin`.
+
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Toraja/github-release-downloader/releases/latest/download/github-release-downloader-installer.sh | sh
 ```
