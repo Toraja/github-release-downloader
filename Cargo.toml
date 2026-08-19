@@ -7,6 +7,10 @@ description = "Download assets from the latest GitHub release of a repository"
 license = "MIT"
 authors = ["Toraja <Toraja@users.noreply.github.com>"]
 
+[[bin]]
+name = "ghrls"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 url = "2"

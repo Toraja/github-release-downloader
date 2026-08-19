@@ -31,10 +31,10 @@ cargo install --path .
 ## Usage
 
 ```
-github-release-downloader <URL> <PATTERN> [OPTIONS]
+ghrls <URL> <PATTERN> [OPTIONS]
 ```
 
-See `github-release-downloader --help` for more details.
+See `ghrls --help` for more details.
 
 ## Releasing
 

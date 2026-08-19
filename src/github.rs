@@ -45,7 +45,7 @@ pub fn to_api_url(url: &Url) -> Result<Url, AppError> {
 
 pub fn fetch_release(api_url: &Url) -> Result<Release, AppError> {
     let mut req = ureq::get(api_url.as_str())
-        .header("User-Agent", "github-release-downloader")
+        .header("User-Agent", "ghrls")
         .header("Accept", "application/vnd.github+json");
 
     if let Ok(token) = std::env::var("GITHUB_TOKEN") {
@@ -89,7 +89,7 @@ pub fn select_asset<'a>(assets: &'a [Asset], pattern: &Regex) -> Result<&'a Asse
 
 pub fn fetch_asset(asset: &Asset) -> Result<impl Read + 'static, AppError> {
     let response = ureq::get(&asset.browser_download_url)
-        .header("User-Agent", "github-release-downloader")
+        .header("User-Agent", "ghrls")
         .call()
         .map_err(|e| AppError::Download(e.to_string()))?;
 
