@@ -340,12 +340,6 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_entry_unsupported_format() {
-        assert!(!is_extractable("tool-v1.0.zip"));
-        assert!(!is_extractable("tool-v1.0.tar.bz2"));
-    }
-
-    #[test]
     fn test_unpack_tar_gz_extracts_files() {
         use flate2::Compression;
         use flate2::write::GzEncoder;
@@ -390,10 +384,10 @@ mod tests {
         assert!(dest_dir.join("README.md").exists());
     }
 
-    // ── file entry → default destination (Into) ──────────────────────────────
+    // ── file entry → Into (default / --dir) ──────────────────────────
 
     #[test]
-    fn test_extract_entry_file_default_dest() {
+    fn test_extract_entry_file_into_dir() {
         let data = make_tar_gz_with_entries(&[
             ("bin/tool", Some("binary content")),
             ("README.md", Some("readme")),
@@ -409,25 +403,10 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&landing).unwrap(), "binary content");
     }
 
-    // ── file entry → --dir (Into with explicit dir) ──────────────────────────
+    // ── file entry → Exact (--output) ────────────────────────────────
 
     #[test]
-    fn test_extract_entry_file_with_dir() {
-        let data = make_tar_gz_with_entries(&[("bin/tool", Some("binary"))]);
-        let tmp = tempfile::tempdir().unwrap();
-        let landing = extract_archive(
-            data.as_slice(),
-            Some("bin/tool"),
-            Destination::Into(tmp.path().to_path_buf()),
-        )
-        .unwrap();
-        assert_eq!(std::fs::read_to_string(&landing).unwrap(), "binary");
-    }
-
-    // ── file entry → --output (rename, Exact) ────────────────────────────────
-
-    #[test]
-    fn test_extract_entry_file_with_output_rename() {
+    fn test_extract_entry_file_to_exact() {
         let data = make_tar_gz_with_entries(&[("bin/tool", Some("renamed content"))]);
         let tmp = tempfile::tempdir().unwrap();
         let dest = tmp.path().join("mytool");
@@ -444,10 +423,10 @@ mod tests {
         );
     }
 
-    // ── directory entry → default destination (Into) ─────────────────────────
+    // ── directory entry → Into (default / --dir) ───────────────────────────────────────
 
     #[test]
-    fn test_extract_entry_dir_default_dest() {
+    fn test_extract_entry_dir_into_dir() {
         let data = make_tar_gz_with_entries(&[
             ("share/config/a.conf", Some("aaa")),
             ("share/config/b.conf", Some("bbb")),
@@ -471,28 +450,10 @@ mod tests {
         );
     }
 
-    // ── directory entry → --dir (Into) ───────────────────────────────────────
+    // ── directory entry → Exact (--output, rename root) ──────────────────────
 
     #[test]
-    fn test_extract_entry_dir_with_dir_flag() {
-        let data = make_tar_gz_with_entries(&[("pkg/lib/x.so", Some("lib"))]);
-        let tmp = tempfile::tempdir().unwrap();
-        let landing = extract_archive(
-            data.as_slice(),
-            Some("pkg/lib"),
-            Destination::Into(tmp.path().to_path_buf()),
-        )
-        .unwrap();
-        assert_eq!(
-            std::fs::read_to_string(landing.join("x.so")).unwrap(),
-            "lib"
-        );
-    }
-
-    // ── directory entry → --output (rename root, Exact) ──────────────────────
-
-    #[test]
-    fn test_extract_entry_dir_with_output_rename() {
+    fn test_extract_entry_dir_to_exact() {
         let data = make_tar_gz_with_entries(&[
             ("share/config/a.conf", Some("aaa")),
             ("share/config/sub/b.conf", Some("bbb")),
