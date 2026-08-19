@@ -1,4 +1,7 @@
-use clap::{CommandFactory, Parser};
+use std::io;
+
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use regex::Regex;
 use url::Url;
 
@@ -10,16 +13,34 @@ use archive::{Destination, extract_archive, is_extractable, save_to_file};
 use error::AppError;
 use github::{fetch_asset, fetch_release, select_asset, to_api_url};
 
-/// Download a release asset from a GitHub repository.
-///
-/// Fetches the latest release from the given GitHub repository and downloads
-/// the single asset whose name matches PATTERN (a regular expression).
-///
-/// Authentication: set the GITHUB_TOKEN environment variable to use an
-/// authenticated request and avoid the 60 req/hr unauthenticated rate limit.
+/// Download release assets from GitHub or generate shell completions.
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
-struct Args {
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Download a release asset from a GitHub repository.
+    ///
+    /// Fetches the latest release from the given GitHub repository and downloads
+    /// the single asset whose name matches PATTERN (a regular expression).
+    ///
+    /// Authentication: set the GITHUB_TOKEN environment variable to use an
+    /// authenticated request and avoid the 60 req/hr unauthenticated rate limit.
+    Download(Download),
+
+    /// Print a shell completion script to stdout and exit.
+    Completion {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
+}
+
+#[derive(Debug, Parser)]
+struct Download {
     #[allow(rustdoc::bare_urls)]
     /// GitHub repository URL (e.g., https://github.com/owner/repo)
     url: Url,
@@ -56,7 +77,7 @@ struct Args {
     archive_entry: Option<String>,
 }
 
-impl Args {
+impl Download {
     /// Post-parse validation for rules Clap cannot express declaratively.
     ///
     /// Rejects `--output` together with `--extract` when `--archive-entry` is absent:
@@ -67,7 +88,7 @@ impl Args {
     /// Returns a `clap::Error` so callers can handle it (e.g. exit or assert in tests).
     fn try_validate(&self) -> Result<(), clap::Error> {
         if self.extract && self.archive_entry.is_none() && self.output.is_some() {
-            return Err(Args::command().error(
+            return Err(Cli::command().error(
                 clap::error::ErrorKind::ArgumentConflict,
                 "--output cannot be used when extracting a whole archive; use --dir instead",
             ));
@@ -81,31 +102,41 @@ impl Args {
 }
 
 fn run() -> Result<(), AppError> {
-    let args = Args::parse();
-    args.validate();
+    let cli = Cli::parse();
 
-    let api_url = to_api_url(&args.url)?;
-    let release = fetch_release(&api_url)?;
-    let asset = select_asset(&release.assets, &args.pattern)?;
+    match cli.command {
+        Command::Completion { shell } => {
+            let mut cmd = Cli::command();
+            clap_complete::generate(shell, &mut cmd, "ghrls", &mut io::stdout());
+            Ok(())
+        }
+        Command::Download(args) => {
+            args.validate();
 
-    if args.extract && !is_extractable(&asset.name) {
-        return Err(AppError::UnsupportedFormat(asset.name.clone()));
+            let api_url = to_api_url(&args.url)?;
+            let release = fetch_release(&api_url)?;
+            let asset = select_asset(&release.assets, &args.pattern)?;
+
+            if args.extract && !is_extractable(&asset.name) {
+                return Err(AppError::UnsupportedFormat(asset.name.clone()));
+            }
+
+            let reader = fetch_asset(asset)?;
+
+            if args.extract {
+                let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
+                let landing = extract_archive(reader, args.archive_entry.as_deref(), dest)?;
+                println!("Extracted to: {}", landing.display());
+                return Ok(());
+            }
+
+            let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
+            let landing = save_to_file(reader, &asset.name, dest)?;
+            println!("Downloaded: {}", landing.display());
+
+            Ok(())
+        }
     }
-
-    let reader = fetch_asset(asset)?;
-
-    if args.extract {
-        let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
-        let landing = extract_archive(reader, args.archive_entry.as_deref(), dest)?;
-        println!("Extracted to: {}", landing.display());
-        return Ok(());
-    }
-
-    let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
-    let landing = save_to_file(reader, &asset.name, dest)?;
-    println!("Downloaded: {}", landing.display());
-
-    Ok(())
 }
 
 fn main() {
@@ -121,10 +152,19 @@ mod tests {
 
     use super::*;
 
+    fn parse_download(args: &[&str]) -> Result<Download, clap::Error> {
+        let mut full = vec!["ghrls", "download"];
+        full.extend_from_slice(args);
+        let cli = Cli::try_parse_from(full)?;
+        match cli.command {
+            Command::Download(d) => Ok(d),
+            _ => panic!("expected Download subcommand"),
+        }
+    }
+
     #[test]
     fn test_dir_and_output_mutually_exclusive() {
-        let result = Args::try_parse_from([
-            "prog",
+        let result = parse_download(&[
             "https://github.com/owner/repo",
             "pattern",
             "--dir",
@@ -137,8 +177,7 @@ mod tests {
 
     #[test]
     fn test_archive_entry_without_extract_rejected() {
-        let result = Args::try_parse_from([
-            "prog",
+        let result = parse_download(&[
             "https://github.com/owner/repo",
             "pattern",
             "--archive-entry",
@@ -152,8 +191,7 @@ mod tests {
 
     #[test]
     fn test_extract_and_output_whole_archive_rejected() {
-        let args = Args::try_parse_from([
-            "prog",
+        let args = parse_download(&[
             "https://github.com/owner/repo",
             "pattern",
             "--output",
@@ -169,8 +207,7 @@ mod tests {
 
     #[test]
     fn test_extract_with_archive_entry_and_output_accepted() {
-        let args = Args::try_parse_from([
-            "prog",
+        let args = parse_download(&[
             "https://github.com/owner/repo",
             "pattern",
             "--extract",
@@ -183,5 +220,21 @@ mod tests {
         assert!(args.extract);
         assert_eq!(args.archive_entry.as_deref(), Some("bin/tool"));
         assert!(args.output.is_some());
+    }
+
+    #[test]
+    fn test_completion_bash_parses_successfully() {
+        let cli = Cli::try_parse_from(["ghrls", "completion", "bash"])
+            .expect("should parse successfully");
+        assert!(matches!(
+            cli.command,
+            Command::Completion { shell: Shell::Bash }
+        ));
+    }
+
+    #[test]
+    fn test_completion_unknown_shell_rejected() {
+        let result = Cli::try_parse_from(["ghrls", "completion", "unknown-shell"]);
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidValue);
     }
 }

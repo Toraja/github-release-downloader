@@ -31,7 +31,23 @@ cargo install --path .
 ## Usage
 
 ```
-ghrls <URL> <PATTERN> [OPTIONS]
+ghrls download <URL> <PATTERN> [OPTIONS]
+```
+
+See `ghrls download --help` for all options.
+
+To generate a shell completion script:
+
+```
+ghrls completion <SHELL>
+```
+
+Supported shells: `bash`, `zsh`, `fish`, `powershell`, `elvish`.
+
+Example — add bash completions to your current session:
+
+```sh
+source <(ghrls completion bash)
 ```
 
 See `ghrls --help` for more details.
