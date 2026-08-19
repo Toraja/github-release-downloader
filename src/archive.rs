@@ -46,7 +46,7 @@ pub fn is_extractable(asset_name: &str) -> bool {
 }
 
 /// Strip a leading `./` and a trailing `/` from an archive entry path.
-pub fn normalize_entry_path(s: &str) -> &str {
+fn normalize_entry_path(s: &str) -> &str {
     let s = s.strip_prefix("./").unwrap_or(s);
     s.trim_end_matches('/')
 }
@@ -133,7 +133,7 @@ pub fn extract_archive(
     }
 }
 
-pub fn unpack_tar_gz<R: Read>(reader: R, dest_dir: &Path) -> Result<(), AppError> {
+fn unpack_tar_gz<R: Read>(reader: R, dest_dir: &Path) -> Result<(), AppError> {
     let gz = GzDecoder::new(reader);
     let mut archive = tar::Archive::new(gz);
     archive
