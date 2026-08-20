@@ -1,49 +1,11 @@
-use std::fs::{self, File};
-use std::io::{self, Read};
+use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use flate2::read::GzDecoder;
 
+use crate::destination::Destination;
 use crate::error::AppError;
-
-/// Describes where the extracted result should land.
-///
-/// - `Into(dir)`: place the naturally-named result *into* this directory
-///   (whole archive unpacks directly into `dir`; a single entry lands at `dir/basename(entry)`).
-/// - `Exact(path)`: use this path verbatim (renames the result).
-///   Valid only when extracting a single entry; passing `Exact` for whole-archive
-///   extraction is a programming error guarded by `Args::validate` in `main`.
-#[derive(Debug)]
-pub enum Destination {
-    Into(PathBuf),
-    Exact(PathBuf),
-}
-
-impl Destination {
-    /// Resolve a `Destination` from two optional paths.
-    /// `exact` takes precedence; falls back to `into`, defaulting to `.`.
-    /// Returns an error if `exact` points to an existing directory.
-    pub fn resolve(
-        into: Option<&std::path::Path>,
-        exact: Option<&std::path::Path>,
-    ) -> Result<Self, crate::error::AppError> {
-        match exact {
-            Some(p) => {
-                if p.is_dir() {
-                    return Err(crate::error::AppError::OutputIsDir(p.display().to_string()));
-                }
-                Ok(Destination::Exact(p.to_path_buf()))
-            }
-            None => {
-                let p = into.unwrap_or(std::path::Path::new("."));
-                if p.is_file() {
-                    return Err(crate::error::AppError::DirIsFile(p.display().to_string()));
-                }
-                Ok(Destination::Into(p.to_path_buf()))
-            }
-        }
-    }
-}
 
 pub fn is_extractable(asset_name: &str) -> bool {
     asset_name.ends_with(".tar.gz") || asset_name.ends_with(".tgz")
@@ -53,39 +15,6 @@ pub fn is_extractable(asset_name: &str) -> bool {
 fn normalize_entry_path(s: &str) -> &str {
     let s = s.strip_prefix("./").unwrap_or(s);
     s.trim_end_matches('/')
-}
-
-pub fn save_to_file(
-    reader: impl Read,
-    asset_name: &str,
-    dest: Destination,
-) -> Result<PathBuf, AppError> {
-    let path = match dest {
-        Destination::Into(dir) => dir.join(asset_name),
-        Destination::Exact(p) => p,
-    };
-
-    if let Some(parent) = path.parent()
-        && !parent.as_os_str().is_empty()
-    {
-        fs::create_dir_all(parent).map_err(|e| AppError::CreateDir {
-            path: parent.display().to_string(),
-            source: e,
-        })?;
-    }
-
-    let mut file = File::create(&path).map_err(|e| AppError::CreateFile {
-        path: path.display().to_string(),
-        source: e,
-    })?;
-
-    let mut reader = reader;
-    io::copy(&mut reader, &mut file).map_err(|e| AppError::WriteFile {
-        path: path.display().to_string(),
-        source: e,
-    })?;
-
-    Ok(path)
 }
 
 /// Unified extraction entry point.
@@ -245,65 +174,11 @@ mod tests {
     use std::assert_matches;
 
     use super::*;
+    use crate::destination::Destination;
 
     #[test]
     fn test_archive_path_has_preceeding_and_trailing_slash() {
         assert_eq!(normalize_entry_path("./foo/bar/"), "foo/bar");
-    }
-
-    // ── Destination::resolve ─────────────────────────────────────────────────
-
-    #[test]
-    fn test_destination_resolve_no_args_uses_current_dir() {
-        let dest = Destination::resolve(None, None).unwrap();
-        assert_matches!(dest, Destination::Into(d) if d == std::path::Path::new("."));
-    }
-
-    #[test]
-    fn test_destination_resolve_into_existing_dir_appends_nothing() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dest = Destination::resolve(Some(tmp.path()), None).unwrap();
-        assert_matches!(dest, Destination::Into(d) if d == tmp.path());
-    }
-
-    #[test]
-    fn test_destination_resolve_into_non_existing_dir() {
-        let tmp = tempfile::tempdir().unwrap();
-        let non_existing = tmp.path().join("subdir");
-        let dest = Destination::resolve(Some(&non_existing), None).unwrap();
-        assert_matches!(dest, Destination::Into(d) if d == non_existing);
-    }
-
-    #[test]
-    fn test_destination_resolve_exact_non_existing_path_used_as_is() {
-        let dest =
-            Destination::resolve(None, Some(std::path::Path::new("/tmp/renamed.bin"))).unwrap();
-        assert_matches!(dest, Destination::Exact(p) if p == std::path::Path::new("/tmp/renamed.bin"));
-    }
-
-    #[test]
-    fn test_destination_resolve_exact_existing_file_used_as_is() {
-        let tmp = tempfile::tempdir().unwrap();
-        let file_path = tmp.path().join("existing.bin");
-        std::fs::File::create(&file_path).unwrap();
-        let dest = Destination::resolve(None, Some(&file_path)).unwrap();
-        assert_matches!(dest, Destination::Exact(p) if p == file_path);
-    }
-
-    #[test]
-    fn test_destination_resolve_exact_existing_directory_returns_error() {
-        let tmp = tempfile::tempdir().unwrap();
-        let err = Destination::resolve(None, Some(tmp.path())).unwrap_err();
-        assert_matches!(err, AppError::OutputIsDir(_));
-    }
-
-    #[test]
-    fn test_destination_resolve_into_existing_file_returns_error() {
-        let tmp = tempfile::tempdir().unwrap();
-        let file_path = tmp.path().join("existing.bin");
-        std::fs::File::create(&file_path).unwrap();
-        let err = Destination::resolve(Some(&file_path), None).unwrap_err();
-        assert_matches!(err, AppError::DirIsFile(_));
     }
 
     /// Build an in-memory .tar.gz with the given (archive-path, content) pairs.
@@ -589,93 +464,5 @@ mod tests {
         )
         .unwrap();
         assert_eq!(std::fs::read_to_string(&landing).unwrap(), "content");
-    }
-
-    // ── save_to_file ─────────────────────────────────────────────────────────
-
-    #[test]
-    fn test_save_to_file_into_writes_file_with_asset_name() {
-        let tmp = tempfile::tempdir().unwrap();
-        let content = b"hello bytes";
-        let landing = save_to_file(
-            content.as_slice(),
-            "asset.bin",
-            Destination::Into(tmp.path().to_path_buf()),
-        )
-        .unwrap();
-        assert_eq!(landing, tmp.path().join("asset.bin"));
-        assert_eq!(std::fs::read(&landing).unwrap(), content);
-    }
-
-    #[test]
-    fn test_save_to_file_exact_writes_file_to_given_path() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("renamed.bin");
-        let content = b"exact content";
-        let landing = save_to_file(
-            content.as_slice(),
-            "ignored_name",
-            Destination::Exact(dest.clone()),
-        )
-        .unwrap();
-        assert_eq!(landing, dest);
-        assert_eq!(std::fs::read(&landing).unwrap(), content);
-    }
-
-    #[test]
-    fn test_save_to_file_exact_creates_parent_dirs() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("a/b/c/file.bin");
-        let content = b"nested";
-        let landing = save_to_file(
-            content.as_slice(),
-            "ignored",
-            Destination::Exact(dest.clone()),
-        )
-        .unwrap();
-        assert_eq!(landing, dest);
-        assert_eq!(std::fs::read(&landing).unwrap(), content);
-    }
-
-    #[test]
-    fn test_save_to_file_into_creates_parent_dirs() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = tmp.path().join("new/nested/dir");
-        let content = b"data";
-        let landing = save_to_file(
-            content.as_slice(),
-            "file.bin",
-            Destination::Into(dir.clone()),
-        )
-        .unwrap();
-        assert_eq!(landing, dir.join("file.bin"));
-        assert_eq!(std::fs::read(&landing).unwrap(), content);
-    }
-
-    #[test]
-    fn test_save_to_file_overwrites_existing_file() {
-        let tmp = tempfile::tempdir().unwrap();
-        let dest = tmp.path().join("file.bin");
-        std::fs::write(&dest, "old content").unwrap();
-        let content = b"new content";
-        save_to_file(
-            content.as_slice(),
-            "ignored",
-            Destination::Exact(dest.clone()),
-        )
-        .unwrap();
-        assert_eq!(std::fs::read(&dest).unwrap(), content);
-    }
-
-    #[test]
-    fn test_save_to_file_returns_error_when_parent_is_a_file() {
-        let tmp = tempfile::tempdir().unwrap();
-        // Create a file where a directory is expected as parent
-        let blocking_file = tmp.path().join("notadir");
-        std::fs::write(&blocking_file, "i am a file").unwrap();
-        let dest = blocking_file.join("child.bin");
-        let err =
-            save_to_file(b"data".as_slice(), "ignored", Destination::Exact(dest)).unwrap_err();
-        assert_matches!(err, AppError::CreateDir { .. });
     }
 }

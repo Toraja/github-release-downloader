@@ -6,11 +6,15 @@ use regex::Regex;
 use url::Url;
 
 mod archive;
+mod destination;
 mod error;
+mod fs;
 mod github;
 
-use archive::{Destination, extract_archive, is_extractable, save_to_file};
+use archive::{extract_archive, is_extractable};
+use destination::Destination;
 use error::AppError;
+use fs::save_to_file;
 use github::{fetch_asset, fetch_release, select_asset, to_api_url};
 
 /// Download release assets from GitHub or generate shell completions.
