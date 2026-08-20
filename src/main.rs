@@ -15,6 +15,7 @@ use archive::{extract_archive, is_extractable};
 use destination::Destination;
 use error::AppError;
 use fs::save_to_file;
+use fs::set_executable;
 use github::{fetch_asset, fetch_release, select_asset, to_api_url};
 
 /// Download release assets from GitHub or generate shell completions.
@@ -79,6 +80,12 @@ struct Download {
     /// Requires --extract.
     #[arg(short = 'X', long, requires = "extract")]
     archive_entry: Option<String>,
+
+    /// Set the executable bit (a+x / chmod 0o111) on the downloaded or extracted file.
+    /// Unix-only (Linux and macOS). Not supported for whole-archive extraction;
+    /// use --archive-entry to select a single entry. Fails if the entry is a directory.
+    #[arg(short = 'e', long)]
+    executable: bool,
 }
 
 impl Download {
@@ -95,6 +102,12 @@ impl Download {
             return Err(Cli::command().error(
                 clap::error::ErrorKind::ArgumentConflict,
                 "--output cannot be used when extracting a whole archive; use --dir instead",
+            ));
+        }
+        if self.executable && self.extract && self.archive_entry.is_none() {
+            return Err(Cli::command().error(
+                clap::error::ErrorKind::ArgumentConflict,
+                "--executable cannot be used with whole-archive extraction; use --archive-entry to select a single entry",
             ));
         }
         Ok(())
@@ -127,16 +140,26 @@ fn run() -> Result<(), AppError> {
 
             let reader = fetch_asset(asset)?;
 
-            if args.extract {
+            let landing = if args.extract {
                 let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
                 let landing = extract_archive(reader, args.archive_entry.as_deref(), dest)?;
                 println!("Extracted to: {}", landing.display());
-                return Ok(());
-            }
+                if args.executable && landing.is_dir() {
+                    return Err(AppError::ExecutableTargetIsDir(
+                        landing.display().to_string(),
+                    ));
+                }
+                landing
+            } else {
+                let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
+                let landing = save_to_file(reader, &asset.name, dest)?;
+                println!("Downloaded: {}", landing.display());
+                landing
+            };
 
-            let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
-            let landing = save_to_file(reader, &asset.name, dest)?;
-            println!("Downloaded: {}", landing.display());
+            if args.executable {
+                set_executable(&landing)?;
+            }
 
             Ok(())
         }
@@ -240,5 +263,37 @@ mod tests {
     fn test_completion_unknown_shell_rejected() {
         let result = Cli::try_parse_from(["ghrls", "completion", "unknown-shell"]);
         assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidValue);
+    }
+
+    #[test]
+    fn test_extract_and_executable_without_archive_entry_rejected() {
+        let args = parse_download(&[
+            "https://github.com/owner/repo",
+            "pattern",
+            "--extract",
+            "--executable",
+        ])
+        .expect("should parse; conflict is post-parse");
+        assert_eq!(
+            args.try_validate().unwrap_err().kind(),
+            ErrorKind::ArgumentConflict
+        );
+    }
+
+    #[test]
+    fn test_extract_with_archive_entry_and_executable_accepted() {
+        let args = parse_download(&[
+            "https://github.com/owner/repo",
+            "pattern",
+            "--extract",
+            "--archive-entry",
+            "bin/tool",
+            "--executable",
+        ])
+        .expect("should parse successfully");
+        assert!(args.extract);
+        assert_eq!(args.archive_entry.as_deref(), Some("bin/tool"));
+        assert!(args.executable);
+        args.try_validate().expect("should validate successfully");
     }
 }

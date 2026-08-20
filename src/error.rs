@@ -69,4 +69,14 @@ pub enum AppError {
 
     #[error("Failed to extract archive: {0}")]
     ArchiveExtract(String),
+
+    #[error("Asset written to '{path}' but could not set executable bit: {source}")]
+    SetPermissions {
+        path: String,
+        #[source]
+        source: io::Error,
+    },
+
+    #[error("--executable requires a file target, but '{0}' is a directory")]
+    ExecutableTargetIsDir(String),
 }

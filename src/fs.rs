@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::destination::Destination;
 use crate::error::AppError;
@@ -36,6 +36,34 @@ pub fn save_to_file(
     })?;
 
     Ok(path)
+}
+
+#[cfg(unix)]
+pub fn set_executable(path: &Path) -> Result<(), AppError> {
+    use std::os::unix::fs::PermissionsExt;
+    let metadata = fs::metadata(path).map_err(|e| AppError::SetPermissions {
+        path: path.display().to_string(),
+        source: e,
+    })?;
+    let mut perms = metadata.permissions();
+    let mode = perms.mode();
+    perms.set_mode(mode | 0o111);
+    fs::set_permissions(path, perms).map_err(|e| AppError::SetPermissions {
+        path: path.display().to_string(),
+        source: e,
+    })?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+pub fn set_executable(path: &Path) -> Result<(), AppError> {
+    return Err(AppError::SetPermissions {
+        path: path.display().to_string(),
+        source: io::Error::new(
+            io::ErrorKind::Unsupported,
+            "--executable is not supported on non-Unix platforms",
+        ),
+    });
 }
 
 #[cfg(test)]
@@ -129,5 +157,45 @@ mod tests {
         let err =
             save_to_file(b"data".as_slice(), "ignored", Destination::Exact(dest)).unwrap_err();
         assert_matches!(err, AppError::CreateDir { .. });
+    }
+
+    #[cfg(unix)]
+    mod set_executable_tests {
+        use std::os::unix::fs::PermissionsExt;
+
+        use super::*;
+
+        #[test]
+        fn test_set_executable_0o644_becomes_0o755() {
+            let tmp = tempfile::tempdir().unwrap();
+            let path = tmp.path().join("file");
+            std::fs::write(&path, b"data").unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+            set_executable(&path).unwrap();
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o755);
+        }
+
+        #[test]
+        fn test_set_executable_0o600_becomes_0o711() {
+            let tmp = tempfile::tempdir().unwrap();
+            let path = tmp.path().join("file");
+            std::fs::write(&path, b"data").unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+            set_executable(&path).unwrap();
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o711);
+        }
+
+        #[test]
+        fn test_set_executable_0o755_unchanged() {
+            let tmp = tempfile::tempdir().unwrap();
+            let path = tmp.path().join("file");
+            std::fs::write(&path, b"data").unwrap();
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+            set_executable(&path).unwrap();
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o755);
+        }
     }
 }
