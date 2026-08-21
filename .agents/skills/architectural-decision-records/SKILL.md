@@ -1,17 +1,17 @@
 ---
-name: architecture-decision-records
-description: Use when documenting, drafting, reviewing, or updating architecture decisions, ADRs, decision logs, tradeoffs, rationale, consequences, alternatives, or architecture decision history.
+name: architectural-decision-records
+description: Use when documenting, drafting, reviewing, or updating architectural decisions, ADRs, decision logs, tradeoffs, rationale, consequences, alternatives, or architectural decision history.
 ---
 
-# Architecture Decision Records
+# Architectural Decision Records
 
 ## Overview
 
-An Architecture Decision Record captures one architecturally significant decision, its rationale, tradeoffs, and consequences. Optimize for future readers reconstructing decision history.
+An Architectural Decision Record captures one architecturally significant decision, its rationale, tradeoffs, and consequences. Optimize for future readers reconstructing decision history.
 
 ## When to Use
 
-Use when creating, updating, reviewing, or explaining an ADR, architecture decision, decision log, tradeoff analysis, rationale, consequences, alternatives, or status.
+Use when creating, updating, reviewing, or explaining an ADR, architectural decision, decision log, tradeoff analysis, rationale, consequences, alternatives, or status.
 
 Do not use ADRs for transient implementation details, meeting notes, or insignificant decisions. If significance is unclear, ask what future maintainers will need to know.
 
