@@ -3,16 +3,16 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") <level> [changelog] [repo-url]
+Usage: $(basename "$0") <version> [changelog] [repo-url]
 
 Prepare the CHANGELOG for a release by inserting a versioned section and
 updating the reference-style comparison links.
 
 Arguments:
-  level       Version bump level passed to cargo-release (e.g. patch, minor, major)
+  version     Version to insert as a changelog header
   changelog   Path to the changelog file (default: CHANGELOG.md)
   repo-url    Repository base URL used for comparison links
-              (default: https://github.com/Toraja/github-release-downloader)
+              (default: output of 'scripts/get-git-remote-web-url.sh')
 
 Options:
   -h, --help  Show this help message and exit
@@ -24,20 +24,16 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-LEVEL=$1
+script_dir=$(dirname "$0")
+
+VERSION=${1:-}
 CHANGELOG="${2:-CHANGELOG.md}"
-REPO_URL="${3:-https://github.com/Toraja/github-release-downloader}"
+REPO_URL="${3:-$($script_dir/get-git-remote-web-url.sh)}"
 
-if [[ -z "$LEVEL" ]]; then
-  echo "ERROR: <level> is required" >&2
-  usage >&2
-  exit 1
-fi
-
-# Determine next version via cargo-release
-VERSION=$(cargo release version "$LEVEL" 2>&1 | grep "^ *Upgrading" | awk '{print $NF}')
 if [[ -z "$VERSION" ]]; then
-  echo "ERROR: could not determine next version from cargo release" >&2
+  echo "ERROR: <version> is required" >&2
+  echo
+  usage >&2
   exit 1
 fi
 
