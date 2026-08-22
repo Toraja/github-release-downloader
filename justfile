@@ -16,11 +16,11 @@ lint:
 format:
 	@cargo fmt --all
 
-release level="":
+release-dry-run level:
 	@cargo release {{level}}
 
-release-execute level="":
-	@cargo release --execute {{level}}
+release level:
+	@cargo release --execute --no-publish {{level}}
 
 # For this project, the dist artifact is .github/workflows/release.yml
 [doc("Generate (or update) the artifacts of dist based on dist-workspace.toml")]
