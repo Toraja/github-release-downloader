@@ -15,6 +15,11 @@ test-coverage-lcov:
 	@mkdir --parent target/coverage
 	@cargo llvm-cov nextest --all-features --lcov --output-path target/coverage/lcov.info
 
+[doc("Generate and view test coverage report in browser")]
+test-coverage-lcov:
+	@mkdir --parent target/coverage
+	@cargo llvm-cov nextest --all-features --open
+
 lint:
 	@cargo clippy --all-targets --all-features -- --deny warnings
 
