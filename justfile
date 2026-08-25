@@ -10,6 +10,11 @@ test:
 test-coverage:
 	@cargo llvm-cov nextest --all-features --fail-under-lines 80
 
+[doc("Generate test coverage report in lcov format")]
+test-coverage-lcov:
+	@mkdir --parent target/coverage
+	@cargo llvm-cov nextest --all-features --lcov --output-path target/coverage/lcov.info
+
 lint:
 	@cargo clippy --all-targets --all-features -- --deny warnings
 
