@@ -16,7 +16,7 @@ test-coverage-lcov:
 	@cargo llvm-cov nextest --all-features --lcov --output-path target/coverage/lcov.info
 
 [doc("Generate and view test coverage report in browser")]
-test-coverage-lcov:
+test-coverage-open:
 	@mkdir --parent target/coverage
 	@cargo llvm-cov nextest --all-features --open
 
