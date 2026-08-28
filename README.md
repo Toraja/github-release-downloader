@@ -3,6 +3,7 @@
 ## Features
 
 - Downloads the latest release asset matching a regex pattern
+- Prints the latest release tag, with optional literal prefix removal
 - Streams and extracts `.tar.gz`/`.tgz` archives without writing the archive to disk (`--extract`)
 - Optionally narrows extraction to a single file or directory entry within the archive (`--archive-entry`)
 - Extracted entries can be renamed at the destination with `--output`
@@ -65,6 +66,19 @@ ghrls download <URL> <PATTERN> [OPTIONS]
 ```
 
 See `ghrls download --help` for all options.
+
+To print the latest release tag:
+
+```sh
+ghrls tag https://github.com/owner/repo
+```
+
+Use `--strip-prefix` to remove one literal, case-sensitive prefix when present.
+This is useful for consuming repositories that inconsistently include a `v` prefix:
+
+```sh
+version=$(ghrls tag https://github.com/owner/repo --strip-prefix v)
+```
 
 To generate a shell completion script:
 

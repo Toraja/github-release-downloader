@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `tag` subcommand to print the latest GitHub release tag, with optional literal prefix removal via `--strip-prefix`.
+
 ## [0.3.0] - 2026-08-22
 
 ### Added
