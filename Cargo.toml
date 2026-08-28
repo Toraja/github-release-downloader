@@ -1,6 +1,6 @@
 [package]
 name = "github-release-downloader"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 repository = "https://github.com/Toraja/github-release-downloader"
 description = "Download assets from the latest GitHub release of a repository"

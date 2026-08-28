@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-28
+
 ### Added
 
 - `tag` subcommand to print the latest GitHub release tag, with optional literal prefix removal via `--strip-prefix`.
@@ -49,7 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Toraja/github-release-downloader/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/Toraja/github-release-downloader/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/Toraja/github-release-downloader/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/Toraja/github-release-downloader/compare/v0.2.0...0.3.0
 [0.2.0]: https://github.com/Toraja/github-release-downloader/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Toraja/github-release-downloader/releases/tag/v0.1.0
