@@ -14,6 +14,7 @@ pub struct Asset {
 
 #[derive(Deserialize)]
 pub struct Release {
+    pub tag_name: String,
     pub assets: Vec<Asset>,
 }
 
@@ -60,6 +61,12 @@ pub fn fetch_release(api_url: &Url) -> Result<Release, AppError> {
         .body_mut()
         .read_json::<Release>()
         .map_err(|e| AppError::JsonParse(e.to_string()))
+}
+
+pub fn strip_tag_prefix<'a>(tag: &'a str, prefix: Option<&str>) -> &'a str {
+    prefix
+        .and_then(|prefix| tag.strip_prefix(prefix))
+        .unwrap_or(tag)
 }
 
 pub fn select_asset<'a>(assets: &'a [Asset], pattern: &Regex) -> Result<&'a Asset, AppError> {
@@ -110,6 +117,41 @@ mod tests {
         Asset {
             name: name.to_string(),
             browser_download_url: format!("https://example.com/{}", name),
+        }
+    }
+
+    #[test]
+    fn test_release_deserialization_includes_tag_and_assets() {
+        let release: Release = serde_json::from_str(
+            r#"{
+                "tag_name": "v1.2.3",
+                "assets": [{
+                    "name": "tool.tar.gz",
+                    "browser_download_url": "https://example.com/tool.tar.gz"
+                }]
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(release.tag_name, "v1.2.3");
+        assert_eq!(release.assets.len(), 1);
+        assert_eq!(release.assets[0].name, "tool.tar.gz");
+    }
+
+    #[test]
+    fn test_strip_tag_prefix() {
+        let cases = [
+            ("v1.2.3", Some("v"), "1.2.3"),
+            ("1.2.3", Some("v"), "1.2.3"),
+            ("vv1.2.3", Some("v"), "v1.2.3"),
+            ("V1.2.3", Some("v"), "V1.2.3"),
+            ("stable-2026-08", Some("v"), "stable-2026-08"),
+            ("v", Some("v"), ""),
+            ("v1.2.3", None, "v1.2.3"),
+        ];
+
+        for (tag, prefix, expected) in cases {
+            assert_eq!(strip_tag_prefix(tag, prefix), expected);
         }
     }
 

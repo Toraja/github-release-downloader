@@ -16,9 +16,9 @@ use destination::Destination;
 use error::AppError;
 use fs::save_to_file;
 use fs::set_executable;
-use github::{fetch_asset, fetch_release, select_asset, to_api_url};
+use github::{fetch_asset, fetch_release, select_asset, strip_tag_prefix, to_api_url};
 
-/// Download release assets from GitHub or generate shell completions.
+/// Download assets or print the tag from the latest GitHub release.
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Cli {
@@ -37,11 +37,25 @@ enum Command {
     /// authenticated request and avoid the 60 req/hr unauthenticated rate limit.
     Download(Download),
 
+    /// Print the tag of the latest release from a GitHub repository.
+    Tag(Tag),
+
     /// Print a shell completion script to stdout and exit.
     Completion {
         /// Shell to generate completions for
         shell: Shell,
     },
+}
+
+#[derive(Debug, Parser)]
+struct Tag {
+    #[allow(rustdoc::bare_urls)]
+    /// GitHub repository URL (e.g., https://github.com/owner/repo)
+    url: Url,
+
+    /// Remove one literal, case-sensitive prefix from the start of the tag
+    #[arg(long)]
+    strip_prefix: Option<String>,
 }
 
 #[derive(Debug, Parser)]
@@ -163,6 +177,15 @@ fn run() -> Result<(), AppError> {
 
             Ok(())
         }
+        Command::Tag(args) => {
+            let api_url = to_api_url(&args.url)?;
+            let release = fetch_release(&api_url)?;
+            println!(
+                "{}",
+                strip_tag_prefix(&release.tag_name, args.strip_prefix.as_deref())
+            );
+            Ok(())
+        }
     }
 }
 
@@ -187,6 +210,36 @@ mod tests {
             Command::Download(d) => Ok(d),
             _ => panic!("expected Download subcommand"),
         }
+    }
+
+    fn parse_tag(args: &[&str]) -> Result<Tag, clap::Error> {
+        let mut full = vec!["ghrls", "tag"];
+        full.extend_from_slice(args);
+        let cli = Cli::try_parse_from(full)?;
+        match cli.command {
+            Command::Tag(tag) => Ok(tag),
+            _ => panic!("expected Tag subcommand"),
+        }
+    }
+
+    #[test]
+    fn test_tag_parses_without_prefix() {
+        let tag = parse_tag(&["https://github.com/owner/repo"]).unwrap();
+
+        assert_eq!(tag.url.as_str(), "https://github.com/owner/repo");
+        assert_eq!(tag.strip_prefix, None);
+    }
+
+    #[test]
+    fn test_tag_parses_with_prefix() {
+        let tag = parse_tag(&[
+            "https://github.com/owner/repo",
+            "--strip-prefix",
+            "release-",
+        ])
+        .unwrap();
+
+        assert_eq!(tag.strip_prefix.as_deref(), Some("release-"));
     }
 
     #[test]
