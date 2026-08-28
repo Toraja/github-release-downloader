@@ -4,6 +4,9 @@ default:
 build:
 	@cargo build --all-features
 
+install:
+	cargo install --path . --root ~/.local --force
+
 test:
 	@cargo nextest run
 
