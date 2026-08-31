@@ -54,7 +54,7 @@ pub enum AppError {
     Download(String),
 
     #[error(
-        "--extract requires a supported archive format (.tar.gz or .tgz), but '{0}' is not supported"
+        "--extract requires a supported archive format (.tar.gz, .tgz, or .zip), but '{0}' is not supported"
     )]
     UnsupportedFormat(String),
 
