@@ -101,7 +101,11 @@ See `ghrls --help` for more details.
 Releases are automated via [cargo-dist](https://axodotdev.github.io/cargo-dist).
 Pushing a version tag triggers the GitHub Actions workflow, which builds binaries, then publishes them as a GitHub Release.
 
+Review cargo-dist for updates at least quarterly, and sooner for relevant security advisories. To update it, review its release notes, change `cargo-dist-version` in `dist-workspace.toml`, and run `just dist-generate`; do not edit the generated `.github/workflows/release.yml` directly.
+
+See [Required GitHub Repository Settings](doc/github/repository-settings.md) for the settings that enforce CI-gated Dependabot automerge.
+
 To tag a new release, run:
 ```sh
-just release-execute <level|version>
+just release <level|version>
 ```
