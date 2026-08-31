@@ -1,14 +1,18 @@
 name: Test
 
 on:
-  push: &on-condition
+  push:
     branches:
       - "main"
     paths:
       - "src/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/test.yml"
       - ".github/actions/rust-test/**"
-  pull_request: *on-condition
+  pull_request:
+    branches:
+      - "main"
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,7 +24,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Test github-latest-release-downloader
         uses: ./.github/actions/rust-test
