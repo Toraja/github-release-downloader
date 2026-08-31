@@ -23,14 +23,14 @@ The CLI SHALL expose an `--archive-entry` flag (short: `-X`) that accepts a sing
 - **THEN** the CLI parses successfully and narrows extraction to the `bin/mytool` entry
 
 ### Requirement: Archive format validation
-`--archive-entry` SHALL only work with `.tar.gz` and `.tgz` archives. If the matched asset has an unsupported format, the command MUST exit with a non-zero status and a descriptive error message.
+`--archive-entry` SHALL only work with `.tar.gz`, `.tgz`, and `.zip` archives. If the matched asset has an unsupported format, the command MUST exit with a non-zero status and a descriptive error message.
 
 #### Scenario: Supported format
-- **WHEN** the matched asset name ends with `.tar.gz` or `.tgz`
+- **WHEN** the matched asset name ends with `.tar.gz`, `.tgz`, or `.zip`
 - **THEN** extraction proceeds normally
 
 #### Scenario: Unsupported format
-- **WHEN** the matched asset name does not end with `.tar.gz` or `.tgz`
+- **WHEN** the matched asset name does not end with `.tar.gz`, `.tgz`, or `.zip`
 - **THEN** the CLI exits with exit code 1 and prints an error referencing the unsupported format
 
 ### Requirement: File entry extraction
@@ -99,8 +99,8 @@ When `--archive-entry` targets a directory and the resolved destination already 
 - **THEN** extraction succeeds, `foo/bar` is overwritten with the archive version, `foo/baz` is newly created, and `foo/quux` is left untouched
 
 ### Requirement: Archive not saved to disk
-When `--archive-entry` is used, the archive MUST NOT be written to disk; it SHALL be streamed and unpacked in-memory, consistent with the behaviour of `--extract`.
+When `--archive-entry` is used, the archive MUST NOT be written to disk; it SHALL be unpacked from the downloaded response body without persisting the archive file, consistent with the behaviour of `--extract`.
 
 #### Scenario: Extraction leaves no archive file
 - **WHEN** `--extract --archive-entry bin/mytool` completes successfully
-- **THEN** no `.tar.gz` or `.tgz` file is present in the working directory or destination directory
+- **THEN** no `.tar.gz`, `.tgz`, or `.zip` file is present in the working directory or destination directory

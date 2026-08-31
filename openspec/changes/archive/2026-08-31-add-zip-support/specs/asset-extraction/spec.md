@@ -1,10 +1,6 @@
-## Purpose
+## MODIFIED Requirements
 
-Specifies how the CLI handles extraction of downloaded archive assets when the `--extract` flag is provided.
-
-## Requirements
-
-### Requirement: Extract archive asset when --extract is specified
+### Requirement: Extract archvie asset when --extract is specified
 When the `--extract` flag is provided without `--archive-entry`, the CLI SHALL unpack the **entire** archive to the destination directory, then exit with code 0. The archive is not saved to disk. When `--archive-entry` is also provided, extraction is narrowed to that single entry (see the `extract-entry` capability); the whole-archive behaviour applies only in the absence of `--archive-entry`. Supported archive formats are `.tar.gz`, `.tgz`, and `.zip`.
 
 #### Scenario: --extract with --dir
@@ -26,18 +22,3 @@ When the `--extract` flag is provided without `--archive-entry`, the CLI SHALL u
 #### Scenario: Extraction failure
 - **WHEN** `--extract` is provided but extraction fails (e.g. corrupt archive, I/O error)
 - **THEN** the CLI exits with a non-zero code and prints an error message to stderr
-
-### Requirement: Print destination directory on successful extraction
-When `--extract` is used and extraction succeeds, the CLI SHALL print `Extracted to: <dest>` to stdout, where `<dest>` is the resolved destination path (the destination directory for whole-archive extraction, or the resolved entry destination when `--archive-entry` is used).
-
-#### Scenario: Extraction succeeds with --dir
-- **WHEN** whole-archive extraction completes successfully and `--dir` was provided
-- **THEN** the CLI prints `Extracted to: <dir>` using the resolved directory path
-
-#### Scenario: Extraction succeeds with no location flags
-- **WHEN** whole-archive extraction completes successfully and neither `--dir` nor `--output` was provided
-- **THEN** the CLI prints `Extracted to: .` (or the resolved current directory path)
-
-#### Scenario: Entry extraction succeeds
-- **WHEN** extraction narrowed by `--archive-entry` completes successfully
-- **THEN** the CLI prints `Extracted to: <dest>` using the resolved entry destination path

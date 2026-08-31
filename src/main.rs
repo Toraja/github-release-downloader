@@ -11,7 +11,7 @@ mod error;
 mod fs;
 mod github;
 
-use archive::{extract_archive, is_extractable};
+use archive::{detect_format, extract_archive};
 use destination::Destination;
 use error::AppError;
 use fs::save_to_file;
@@ -82,13 +82,13 @@ struct Download {
     output: Option<std::path::PathBuf>,
 
     /// Extract the downloaded archive to the destination directory.
-    /// Supports .tar.gz and .tgz formats. The archive is not saved to disk.
+    /// Supports .tar.gz, .tgz and .zip formats. The archive is not saved to disk.
     /// Use --archive-entry to narrow extraction to a single entry.
     #[arg(short = 'x', long)]
     extract: bool,
 
     /// Narrow --extract to a single file or directory entry by its internal archive path
-    /// (e.g. `bin/mytool` or `share/config`). Supports .tar.gz and .tgz formats.
+    /// (e.g. `bin/mytool` or `share/config`). Supports .tar.gz, .tgz and .zip formats.
     /// The archive is not saved to disk. Use --output to rename the extracted entry
     /// or --dir to choose the destination directory.
     /// Requires --extract.
@@ -148,15 +148,25 @@ fn run() -> Result<(), AppError> {
             let release = fetch_release(&api_url)?;
             let asset = select_asset(&release.assets, &args.pattern)?;
 
-            if args.extract && !is_extractable(&asset.name) {
-                return Err(AppError::UnsupportedFormat(asset.name.clone()));
-            }
+            let format = if args.extract {
+                match detect_format(&asset.name) {
+                    Some(f) => Some(f),
+                    None => return Err(AppError::UnsupportedFormat(asset.name.clone())),
+                }
+            } else {
+                None
+            };
 
             let reader = fetch_asset(asset)?;
 
             let landing = if args.extract {
                 let dest = Destination::resolve(args.dir.as_deref(), args.output.as_deref())?;
-                let landing = extract_archive(reader, args.archive_entry.as_deref(), dest)?;
+                let landing = extract_archive(
+                    reader,
+                    format.expect("format checked above when --extract is set"),
+                    args.archive_entry.as_deref(),
+                    dest,
+                )?;
                 println!("Extracted to: {}", landing.display());
                 if args.executable && landing.is_dir() {
                     return Err(AppError::ExecutableTargetIsDir(
